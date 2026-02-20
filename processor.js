@@ -12,7 +12,7 @@ import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
 
 // ⚠️ CONFIGURA AQUÍ
-const GROQ_API_KEY   = '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';
+const GROQ_API_KEY   = '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';
 const SUPABASE_URL   = 'https://mpzsjetipddryqfzafhd.supabase.co';
 const SUPABASE_KEY   = 'sb_secret_TuDmHhHcNP0d77kcdVQibA_ACigRaSL';
 // ════════════════════
