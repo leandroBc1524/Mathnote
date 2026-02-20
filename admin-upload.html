@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin — Subir PDFs</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* ── CONFIGURA AQUÍ ── */
+  /* Colores principales de tu web */
+
+  :root {
+    --bg:       #0A0D14;
+    --surface:  #111520;
+    --border:   rgba(255,255,255,0.08);
+    --text:     #F0F4FF;
+    --muted:    rgba(255,255,255,0.35);
+    --accent:   #6EE7B7;
+    --purple:   #C4B5FD;
+    --yellow:   #FCD34D;
+    --red:      #EF4444;
+    --green:    #34D399;
+    --mono:     'JetBrains Mono', 'Courier New', monospace;
+    --sans:     'Sora', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Sora:wght@400;600;800&display=swap');
+
+  /* Layout */
+  .header {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.02);
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .header h1 { font-size: 17px; font-weight: 800; }
+  .header p  { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+
+  .main { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; }
+  .tab {
+    padding: 8px 16px; border-radius: 8px; border: none;
+    cursor: pointer; font-size: 12px; font-family: var(--mono);
+    font-weight: 700; transition: all 0.2s;
+    background: transparent; color: var(--muted);
+  }
+  .tab.active { background: rgba(110,231,183,0.14); color: var(--accent); }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px; padding: 48px 24px;
+    text-align: center; cursor: pointer;
+    transition: all 0.3s;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(110,231,183,0.04); }
+  .upload-zone .icon { font-size: 52px; margin-bottom: 12px; }
+  .upload-zone h3 { font-size: 16px; margin-bottom: 6px; }
+  .upload-zone p  { font-size: 13px; color: var(--muted); }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 20px 0; }
+  .field label { display: block; font-size: 10px; color: var(--muted); font-family: var(--mono); margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+    color: var(--text); font-size: 13px; font-family: var(--sans);
+    outline: none; transition: border 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: #1a1f2e; }
+
+  /* Tipo selector */
+  .tipo-selector { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tipo-btn {
+    flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-size: 13px; font-family: var(--sans); font-weight: 600;
+    transition: all 0.2s; text-align: center;
+  }
+  .tipo-btn.active { border-color: var(--accent); background: rgba(110,231,183,0.1); color: var(--accent); }
+  .tipo-btn.simulacro.active { border-color: var(--purple); background: rgba(196,181,253,0.1); color: var(--purple); }
+
+  /* Botón */
+  .btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: var(--accent); color: #000; font-size: 14px;
+    font-weight: 800; cursor: pointer; transition: all 0.2s;
+    font-family: var(--sans);
+  }
+  .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Progress */
+  .progress-wrap { margin: 16px 0; }
+  .progress-label { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 11px; font-family: var(--mono); color: var(--muted); }
+  .progress-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 3px; transition: width 0.3s; }
+
+  /* Log */
+  .log {
+    background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; margin-top: 16px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.9;
+    max-height: 180px; overflow-y: auto;
+  }
+  .log .ok   { color: var(--green); }
+  .log .err  { color: var(--red); }
+  .log .info { color: var(--muted); }
+  .log .warn { color: var(--yellow); }
+
+  /* Jobs table */
+  .jobs-table { width: 100%; border-collapse: collapse; }
+  .jobs-table th { font-size: 10px; font-family: var(--mono); color: var(--muted); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  .jobs-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12px; vertical-align: middle; }
+  .jobs-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Status badge */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: 9px; font-family: var(--mono); font-weight: 700;
+  }
+  .badge.pending      { background: rgba(148,163,184,0.15); color: #94A3B8; }
+  .badge.extracting   { background: rgba(249,168,212,0.15); color: #F9A8D4; }
+  .badge.ai_processing{ background: rgba(196,181,253,0.15); color: var(--purple); }
+  .badge.validating   { background: rgba(253,224,71,0.15);  color: var(--yellow); }
+  .badge.draft        { background: rgba(253,186,116,0.15); color: #FDBA74; }
+  .badge.done         { background: rgba(52,211,153,0.15);  color: var(--green); }
+  .badge.error        { background: rgba(239,68,68,0.15);   color: var(--red); }
+
+  /* Area badge */
+  .area { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 9px; font-family: var(--mono); font-weight: 700; }
+
+  /* Draft panel */
+  .draft-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; margin-bottom: 10px;
+  }
+  .draft-card.invalid { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.04); }
+  .draft-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .draft-q    { font-size: 14px; font-weight: 600; margin-bottom: 10px; line-height: 1.5; }
+  .opciones   { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .opcion {
+    padding: 6px 10px; border-radius: 7px; font-size: 11px;
+    font-family: var(--mono); border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03); color: var(--muted);
+  }
+  .opcion.correct { border-color: rgba(110,231,183,0.5); background: rgba(110,231,183,0.1); color: var(--accent); }
+  .explicacion { font-size: 11px; color: var(--muted); line-height: 1.5; font-style: italic; }
+  .error-msg   { font-size: 10px; color: var(--red); font-family: var(--mono); margin-top: 6px; }
+
+  .draft-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .btn-aprobar, .btn-rechazar {
+    padding: 6px 14px; border-radius: 7px; border: none; cursor: pointer;
+    font-size: 11px; font-weight: 700; font-family: var(--mono); transition: all 0.2s;
+  }
+  .btn-aprobar  { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.4); }
+  .btn-rechazar { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .btn-aprobar:hover  { background: rgba(52,211,153,0.2); }
+  .btn-rechazar:hover { background: rgba(239,68,68,0.18); }
+
+  /* Filtros */
+  .filtros { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .filtro-label { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .pill {
+    padding: 4px 11px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-size: 10px; font-family: var(--mono); transition: all 0.15s;
+  }
+  .pill.active { border-color: var(--accent); background: rgba(110,231,183,0.12); color: var(--accent); }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
+  .stat  { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .stat .num   { font-size: 24px; font-weight: 800; line-height: 1; }
+  .stat .label { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-top: 3px; }
+
+  /* Aprobar todo btn */
+  .btn-all {
+    padding: 9px 18px; border-radius: 9px; border: 1px solid rgba(52,211,153,0.4);
+    background: rgba(52,211,153,0.1); color: var(--green); cursor: pointer;
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+    transition: all 0.2s;
+  }
+  .btn-all:hover { background: rgba(52,211,153,0.2); }
+
+  /* Empty */
+  .empty { text-align: center; padding: 48px 0; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .spinning { animation: spin 1.5s linear infinite; display: inline-block; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">⚡</div>
+  <div>
+    <h1>Admin — Cargador de PDFs</h1>
+    <p id="headerStatus">Panel privado · Solo tú tienes acceso</p>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('upload')">⬆ Subir PDF</button>
+    <button class="tab" onclick="showTab('jobs')">📋 Jobs</button>
+    <button class="tab" onclick="showTab('draft')" id="tabDraft">📝 Revisar Draft</button>
+  </div>
+
+  <!-- ═══ TAB: UPLOAD ═══════════════════════════ -->
+  <div id="tab-upload">
+
+    <!-- Tipo de PDF -->
+    <p style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;">TIPO DE CONTENIDO</p>
+    <div class="tipo-selector">
+      <button class="tipo-btn active" id="btn-banco" onclick="setTipo('banco')">
+        📚 Banco general<br/>
+        <span style="font-size:11px;font-weight:400;opacity:0.6">Preguntas para práctica libre</span>
+      </button>
+      <button class="tipo-btn simulacro" id="btn-simulacro" onclick="setTipo('simulacro')">
+        🏛 Simulacro<br/>
+        <span style="font-size:11px;font-weight:400;opacity:0.6">Examen de admisión completo</span>
+      </button>
+    </div>
+
+    <!-- Campos solo para simulacro -->
+    <div id="simulacro-fields" style="display:none">
+      <div class="form-grid">
+        <div class="field">
+          <label>UNIVERSIDAD</label>
+          <input type="text" id="universidad" placeholder="UNMSM, PUCP, UNI..."/>
+        </div>
+        <div class="field">
+          <label>AÑO</label>
+          <input type="number" id="anio" placeholder="2024" min="2000" max="2030"/>
+        </div>
+        <div class="field">
+          <label>NOMBRE DEL SIMULACRO</label>
+          <input type="text" id="simNombre" placeholder="Simulacro UNMSM 2024-I"/>
+        </div>
+        <div class="field">
+          <label>TIEMPO LÍMITE (minutos)</label>
+          <input type="number" id="tiempoLimite" placeholder="120" min="30" max="300"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop zone -->
+    <div class="upload-zone" id="dropzone"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)"
+      onclick="document.getElementById('fileInput').click()">
+      <div class="icon" id="dropIcon">📄</div>
+      <h3 id="dropTitle">Arrastra tu PDF aquí</h3>
+      <p id="dropSub">o haz clic para seleccionar · solo archivos .pdf</p>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])"/>
+    </div>
+
+    <!-- Progress (oculto al inicio) -->
+    <div id="progressSection" style="display:none">
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span id="progressLabel">Preparando...</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="log" id="logBox"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══ TAB: JOBS ═════════════════════════════ -->
+  <div id="tab-jobs" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div>
+        <h2 style="font-size:19px;font-weight:800;font-family:var(--sans)">Jobs del Pipeline</h2>
+        <p style="font-size:11px;color:var(--muted);font-family:var(--mono)">Historial de PDFs procesados</p>
+      </div>
+      <button class="btn-all" onclick="loadJobs()">↻ Actualizar</button>
+    </div>
+    <div id="jobsContent"><div class="empty">Cargando...</div></div>
+  </div>
+
+  <!-- ═══ TAB: DRAFT ════════════════════════════ -->
+  <div id="tab-draft" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <h2 style="font-size:19px;font-weight:800;font-family:var(--sans)">Revisar Preguntas</h2>
+        <p style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="draftSubtitle">Cargando...</p>
+      </div>
+      <button class="btn-all" id="btnAprobarTodas" onclick="aprobarTodas()">✓ Aprobar todas válidas</button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats" id="draftStats" style="display:none">
+      <div class="stat"><div class="num" id="statTotal" style="color:var(--text)">0</div><div class="label">TOTAL</div></div>
+      <div class="stat"><div class="num" id="statPend"  style="color:var(--yellow)">0</div><div class="label">PENDIENTES</div></div>
+      <div class="stat"><div class="num" id="statOk"    style="color:var(--green)">0</div><div class="label">APROBADAS</div></div>
+      <div class="stat"><div class="num" id="statErr"   style="color:var(--red)">0</div><div class="label">INVÁLIDAS</div></div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros" id="filtrosBox" style="display:none">
+      <span class="filtro-label">ÁREA:</span>
+      <button class="pill active" onclick="setFiltroArea(this,'all')">Todas</button>
+      <button class="pill" onclick="setFiltroArea(this,'Matematica')">➕ Matemática</button>
+      <button class="pill" onclick="setFiltroArea(this,'Fisica')">⚛ Física</button>
+      <button class="pill" onclick="setFiltroArea(this,'Quimica')">🧪 Química</button>
+      <button class="pill" onclick="setFiltroArea(this,'Biologia')">🔬 Biología</button>
+      <button class="pill" onclick="setFiltroArea(this,'Historia')">📜 Historia</button>
+      <button class="pill" onclick="setFiltroArea(this,'Lenguaje')">📖 Lenguaje</button>
+      <span class="filtro-label" style="margin-left:8px">ESTADO:</span>
+      <button class="pill active" onclick="setFiltroEstado(this,'all')">Todos</button>
+      <button class="pill" onclick="setFiltroEstado(this,'pending')">Pendientes</button>
+      <button class="pill" onclick="setFiltroEstado(this,'invalid')">Inválidas</button>
+    </div>
+
+    <div id="draftContent"><div class="empty">Cargando...</div></div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// ⚠️  CONFIGURA ESTO CON TUS DATOS
+// ════════════════════════════════════════════
+const SUPABASE_URL  = 'https://TU_PROYECTO.supabase.co';
+const SUPABASE_ANON = 'TU_ANON_KEY';  // la anon/public key
+// ════════════════════════════════════════════
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const AREAS_COLOR = {
+  Matematica: '#F9A8D4', Fisica: '#93C5FD', Quimica: '#6EE7B7',
+  Biologia: '#34D399', Historia: '#FCD34D', Lenguaje: '#C4B5FD',
+};
+const AREAS_ICON = {
+  Matematica:'➕', Fisica:'⚛', Quimica:'🧪',
+  Biologia:'🔬', Historia:'📜', Lenguaje:'📖',
+};
+
+// ─── Estado ─────────────────────────────────
+let tipoActual  = 'banco';
+let allDraft    = [];
+let filtroArea  = 'all';
+let filtroEstado= 'all';
+
+// ─── Tabs ───────────────────────────────────
+function showTab(name) {
+  ['upload','jobs','draft'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach((b,i) => {
+    b.classList.toggle('active', ['upload','jobs','draft'][i]===name);
+  });
+  if (name==='jobs')  loadJobs();
+  if (name==='draft') loadDraft();
+}
+
+// ─── Tipo de PDF ────────────────────────────
+function setTipo(tipo) {
+  tipoActual = tipo;
+  document.getElementById('btn-banco').classList.toggle('active', tipo==='banco');
+  document.getElementById('btn-simulacro').classList.toggle('active', tipo==='simulacro');
+  document.getElementById('simulacro-fields').style.display = tipo==='simulacro' ? 'block' : 'none';
+}
+
+// ─── Drag & Drop ────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropzone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f?.type === 'application/pdf') handleFile(f);
+  else logMsg('Solo se aceptan archivos PDF', 'err');
+}
+
+// ─── Log helper ─────────────────────────────
+function logMsg(msg, type='info') {
+  const box = document.getElementById('logBox');
+  const line = document.createElement('div');
+  line.className = type;
+  const now = new Date().toLocaleTimeString('es', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  line.textContent = `[${now}] ${msg}`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(label, pct) {
+  document.getElementById('progressLabel').textContent = label;
+  document.getElementById('progressPct').textContent   = pct + '%';
+  document.getElementById('progressFill').style.width  = pct + '%';
+}
+
+// ─── UPLOAD PRINCIPAL ───────────────────────
+async function handleFile(file) {
+  if (!file) return;
+
+  // Validar config
+  if (SUPABASE_URL.includes('TU_PROYECTO')) {
+    alert('⚠️ Configura SUPABASE_URL y SUPABASE_ANON en el script primero.');
+    return;
+  }
+
+  // Mostrar progreso
+  document.getElementById('dropzone').style.display   = 'none';
+  document.getElementById('progressSection').style.display = 'block';
+  document.getElementById('dropIcon').textContent = '⚙';
+
+  const jobId = Date.now() + '_' + file.name.replace(/[^a-z0-9.]/gi,'_');
+  logMsg(`Archivo: ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`, 'info');
+
+  try {
+    // 1. Subir a Supabase Storage
+    setProgress('Subiendo a Storage...', 10);
+    logMsg('Subiendo PDF a Storage...', 'info');
+    const storagePath = `pdfs/${jobId}`;
+    const { error: upErr } = await db.storage.from('pdfs').upload(storagePath, file, {
+      contentType: 'application/pdf', upsert: false,
+    });
+    if (upErr) throw new Error('Storage: ' + upErr.message);
+    logMsg('✓ PDF guardado en Storage', 'ok');
+
+    // Obtener URL pública
+    const { data: { publicUrl } } = db.storage.from('pdfs').getPublicUrl(storagePath);
+
+    // 2. Crear simulacro si aplica
+    setProgress('Preparando job...', 20);
+    let simulacroId = null;
+    if (tipoActual === 'simulacro') {
+      const nombre = document.getElementById('simNombre').value || file.name.replace('.pdf','');
+      const univ   = document.getElementById('universidad').value || null;
+      const anio   = parseInt(document.getElementById('anio').value) || null;
+      const tiempo = parseInt(document.getElementById('tiempoLimite').value) || null;
+      const { data: sim, error: simErr } = await db.from('simulacros').insert({
+        nombre, universidad: univ, anio, tiempo_limite: tiempo,
+      }).select().single();
+      if (simErr) throw new Error('Simulacro: ' + simErr.message);
+      simulacroId = sim.id;
+      logMsg(`✓ Simulacro creado: ${nombre}`, 'ok');
+    }
+
+    // 3. Crear job en DB
+    const { error: jobErr } = await db.from('pdf_jobs').insert({
+      id: jobId, filename: file.name, storage_path: storagePath,
+      tipo: tipoActual, simulacro_id: simulacroId,
+      universidad: document.getElementById('universidad')?.value || null,
+      anio: parseInt(document.getElementById('anio')?.value) || null,
+      status: 'pending',
+    });
+    if (jobErr) throw new Error('Job: ' + jobErr.message);
+    logMsg(`✓ Job creado: ${jobId}`, 'ok');
+
+    setProgress('Job en cola — esperando worker...', 30);
+    logMsg('', 'info');
+    logMsg('─'.repeat(40), 'info');
+    logMsg('El worker (processor.js) tomará el job.', 'warn');
+    logMsg('Corre: node processor.js', 'warn');
+    logMsg('─'.repeat(40), 'info');
+    logMsg('', 'info');
+
+    // 4. Polling: esperar que el worker procese
+    logMsg('Monitoreando estado del job...', 'info');
+    await pollJobStatus(jobId);
+
+  } catch(err) {
+    logMsg('✗ ERROR: ' + err.message, 'err');
+    setProgress('Error', 100);
+  }
+}
+
+// ─── POLLING del job ────────────────────────
+async function pollJobStatus(jobId) {
+  const labels = {
+    pending:       ['En cola...', 30],
+    extracting:    ['Extrayendo texto del PDF...', 45],
+    ai_processing: ['Groq generando preguntas...', 65],
+    validating:    ['Validando respuestas...', 80],
+    draft:         ['¡Listo! Preguntas en draft', 100],
+    done:          ['¡Completado!', 100],
+    error:         ['Error en el worker', 100],
+  };
+
+  let lastStatus = '';
+  let attempts   = 0;
+
+  return new Promise((resolve) => {
+    const iv = setInterval(async () => {
+      attempts++;
+      if (attempts > 180) { // 15 min timeout
+        clearInterval(iv);
+        logMsg('Timeout — revisa el worker manualmente', 'err');
+        resolve();
+        return;
+      }
+
+      const { data } = await db.from('pdf_jobs').select('status,total_draft,validas,error_msg').eq('id', jobId).single();
+      if (!data) return;
+
+      if (data.status !== lastStatus) {
+        lastStatus = data.status;
+        const [label, pct] = labels[data.status] || ['Procesando...', 50];
+        setProgress(label, pct);
+        logMsg(`Estado: ${data.status.toUpperCase()}`, data.status==='error'?'err':'ok');
+
+        if (data.status === 'draft' || data.status === 'done') {
+          clearInterval(iv);
+          logMsg(`✓ ${data.total_draft} preguntas extraídas (${data.validas} válidas)`, 'ok');
+          logMsg('Ve a la pestaña "Revisar Draft" para aprobarlas', 'warn');
+          document.getElementById('tabDraft').style.color = '#FCD34D';
+
+          // Reset upload zone
+          setTimeout(() => {
+            document.getElementById('dropzone').style.display = 'block';
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('dropIcon').textContent = '📄';
+          }, 4000);
+          resolve();
+        }
+
+        if (data.status === 'error') {
+          clearInterval(iv);
+          logMsg('Error: ' + (data.error_msg || 'Ver worker'), 'err');
+          resolve();
+        }
+      }
+    }, 5000); // chequea cada 5 segundos
+  });
+}
+
+// ─── JOBS TAB ───────────────────────────────
+async function loadJobs() {
+  const { data, error } = await db.from('pdf_jobs')
+    .select('*').order('created_at', { ascending: false }).limit(50);
+
+  const box = document.getElementById('jobsContent');
+  if (error || !data?.length) {
+    box.innerHTML = '<div class="empty">No hay jobs aún. Sube un PDF primero.</div>';
+    return;
+  }
+
+  box.innerHTML = `
+    <table class="jobs-table">
+      <thead>
+        <tr>
+          <th>ARCHIVO</th><th>TIPO</th><th>ESTADO</th>
+          <th>PREGUNTAS</th><th>VÁLIDAS</th><th>FECHA</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(j => `
+          <tr>
+            <td style="font-family:var(--mono);font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.filename}</td>
+            <td>
+              <span style="font-size:10px;padding:2px 7px;border-radius:10px;font-family:var(--mono);font-weight:700;
+                background:${j.tipo==='simulacro'?'rgba(196,181,253,0.15)':'rgba(110,231,183,0.12)'};
+                color:${j.tipo==='simulacro'?'#C4B5FD':'#6EE7B7'}">
+                ${j.tipo==='simulacro'?'🏛 SIM':'📚 BANCO'}
+              </span>
+            </td>
+            <td><span class="badge ${j.status}">${j.status}</span></td>
+            <td style="font-family:var(--mono)">${j.total_draft ?? '—'}</td>
+            <td style="font-family:var(--mono);color:var(--green)">${j.validas ?? '—'}</td>
+            <td style="font-size:10px;color:var(--muted)">${new Date(j.created_at).toLocaleString('es')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ─── DRAFT TAB ──────────────────────────────
+async function loadDraft() {
+  const { data, error } = await db.from('preguntas_draft')
+    .select('*').order('created_at', { ascending: false });
+
+  if (error) {
+    document.getElementById('draftContent').innerHTML = `<div class="empty">Error: ${error.message}</div>`;
+    return;
+  }
+
+  allDraft = data || [];
+  updateDraftStats();
+  renderDraft();
+  document.getElementById('draftStats').style.display  = 'grid';
+  document.getElementById('filtrosBox').style.display   = 'flex';
+}
+
+function updateDraftStats() {
+  const total = allDraft.length;
+  const pend  = allDraft.filter(q => q.aprobada === null && q.valida).length;
+  const ok    = allDraft.filter(q => q.aprobada === true).length;
+  const err   = allDraft.filter(q => !q.valida).length;
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statPend').textContent  = pend;
+  document.getElementById('statOk').textContent    = ok;
+  document.getElementById('statErr').textContent   = err;
+  document.getElementById('draftSubtitle').textContent =
+    `${total} total · ${pend} pendientes · ${ok} aprobadas · ${err} inválidas`;
+}
+
+function renderDraft() {
+  let filtered = allDraft;
+  if (filtroArea !== 'all')    filtered = filtered.filter(q => q.area === filtroArea);
+  if (filtroEstado === 'pending') filtered = filtered.filter(q => q.aprobada === null && q.valida);
+  if (filtroEstado === 'invalid') filtered = filtered.filter(q => !q.valida);
+
+  const box = document.getElementById('draftContent');
+  if (!filtered.length) {
+    box.innerHTML = '<div class="empty">Sin preguntas para este filtro</div>';
+    return;
+  }
+
+  box.innerHTML = filtered.map(q => {
+    const color = AREAS_COLOR[q.area] || '#94A3B8';
+    const icon  = AREAS_ICON[q.area]  || '📋';
+    const dif   = q.dificultad ? '★'.repeat(q.dificultad) + '☆'.repeat(5-q.dificultad) : '—';
+    const opts  = ['A','B','C','D'];
+
+    return `
+      <div class="draft-card ${!q.valida?'invalid':''}" id="card-${q.id}">
+        <div class="draft-meta">
+          <span class="area" style="background:${color}18;border:1px solid ${color}44;color:${color}">${icon} ${q.area||'—'}</span>
+          <span style="font-size:9px;font-family:var(--mono);color:var(--muted)">${q.tema||'—'}</span>
+          <span style="font-size:9px;font-family:var(--mono);color:#FCD34D">${dif}</span>
+          ${q.universidad?`<span style="font-size:9px;font-family:var(--mono);color:var(--purple)">${q.universidad} ${q.anio||''}</span>`:''}
+          ${q.aprobada===true ?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">✓ APROBADA</span>':''}
+          ${q.aprobada===false?'<span style="font-size:9px;color:var(--red);font-family:var(--mono)">✗ RECHAZADA</span>':''}
+        </div>
+        <div class="draft-q">${q.pregunta||'Sin pregunta'}</div>
+        <div class="opciones">
+          ${['opcion_a','opcion_b','opcion_c','opcion_d'].map((k,i) => `
+            <div class="opcion ${q.respuesta_correcta===opts[i]?'correct':''}">
+              ${opts[i]}. ${q[k]||'—'}
+            </div>
+          `).join('')}
+        </div>
+        ${q.valida && q.explicacion ? `<div class="explicacion">💡 ${q.explicacion}</div>` : ''}
+        ${!q.valida ? `<div class="error-msg">⚠ ${q.error_msg}</div>` : ''}
+        ${q.aprobada === null && q.valida ? `
+          <div class="draft-actions">
+            <button class="btn-aprobar" onclick="aprobar('${q.id}')">✓ Aprobar y publicar</button>
+            <button class="btn-rechazar" onclick="rechazar('${q.id}')">✗ Rechazar</button>
+          </div>
+        ` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ─── Aprobar / Rechazar ─────────────────────
+async function aprobar(draftId) {
+  const q = allDraft.find(x => x.id === draftId);
+  if (!q || !q.valida) return;
+
+  // Insertar en preguntas (producción)
+  const { error } = await db.from('preguntas').insert({
+    pregunta: q.pregunta, opcion_a: q.opcion_a, opcion_b: q.opcion_b,
+    opcion_c: q.opcion_c, opcion_d: q.opcion_d,
+    respuesta_correcta: q.respuesta_correcta, explicacion: q.explicacion,
+    area: q.area, tema: q.tema, dificultad: q.dificultad,
+    universidad: q.universidad, anio: q.anio, simulacro_id: q.simulacro_id,
+  });
+
+  if (error) { alert('Error: ' + error.message); return; }
+
+  // Marcar como aprobada en draft
+  await db.from('preguntas_draft').update({ aprobada: true }).eq('id', draftId);
+  allDraft = allDraft.map(x => x.id===draftId ? {...x, aprobada:true} : x);
+  updateDraftStats();
+  renderDraft();
+}
+
+async function rechazar(draftId) {
+  await db.from('preguntas_draft').update({ aprobada: false }).eq('id', draftId);
+  allDraft = allDraft.map(x => x.id===draftId ? {...x, aprobada:false} : x);
+  updateDraftStats();
+  renderDraft();
+}
+
+async function aprobarTodas() {
+  const pendientes = allDraft.filter(q => q.aprobada===null && q.valida);
+  if (!pendientes.length) { alert('No hay preguntas válidas pendientes.'); return; }
+
+  document.getElementById('btnAprobarTodas').textContent = '⏳ Publicando...';
+  document.getElementById('btnAprobarTodas').disabled = true;
+
+  for (const q of pendientes) await aprobar(q.id);
+
+  document.getElementById('btnAprobarTodas').textContent = '✓ Aprobar todas válidas';
+  document.getElementById('btnAprobarTodas').disabled = false;
+}
+
+// ─── Filtros ────────────────────────────────
+function setFiltroArea(btn, val) {
+  filtroArea = val;
+  btn.closest('.filtros').querySelectorAll('.pill').forEach(p => {
+    if (['Todas','Matematica','Fisica','Quimica','Biologia','Historia','Lenguaje'].some(x => p.textContent.includes(x))) {
+      p.classList.toggle('active', p === btn);
+    }
+  });
+  renderDraft();
+}
+function setFiltroEstado(btn, val) {
+  filtroEstado = val;
+  btn.closest('.filtros').querySelectorAll('.pill').forEach(p => {
+    if (['Todos','Pendientes','Inválidas'].some(x => p.textContent.includes(x))) {
+      p.classList.toggle('active', p === btn);
+    }
+  });
+  renderDraft();
+}
+</script>
+</body>
+</html>
