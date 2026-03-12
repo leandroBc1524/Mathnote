@@ -185,6 +185,58 @@
     .key { margin: 4px; padding: 6px 8px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f8fafc; cursor: pointer; }
     .close-red { background: #dc2626; color: #fff; border-color: #dc2626; }
 
+    .floating-image {
+      position: absolute;
+      z-index: 8;
+      border: 1px solid #c4b5fd;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      user-select: none;
+      touch-action: none;
+    }
+    .floating-image.active { box-shadow: 0 0 0 2px #7c3aed, 0 8px 24px rgba(0, 0, 0, 0.15); }
+    .image-toolbar {
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-bottom: 1px solid #ede9fe;
+      background: #faf5ff;
+      cursor: move;
+    }
+    .image-toolbar .btn { margin-right: 0; padding: 5px 8px; }
+    .floating-image img { display: block; width: 100%; height: auto; }
+    .crop-overlay {
+      position: absolute;
+      border: 2px dashed #7c3aed;
+      background: rgba(124, 58, 237, 0.2);
+      pointer-events: none;
+      display: none;
+    }
+    .image-context-menu {
+      position: absolute;
+      z-index: 30;
+      background: #fff;
+      border: 1px solid #ddd6fe;
+      border-radius: 10px;
+      box-shadow: 0 10px 20px rgba(0,0,0,.15);
+      padding: 6px;
+      min-width: 180px;
+      display: none;
+    }
+    .image-context-menu button {
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .image-context-menu button:hover { background: #f5f3ff; }
+
     .cursor-circle-black { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%231e1b4b' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
     .cursor-circle-violet { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%237c3aed' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
     .cursor-circle-red { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23dc2626' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
@@ -234,6 +286,7 @@
             <div class="response" id="assistantResponse"></div>
           </div>
           <div class="math-keyboard" id="mathKeyboard"></div>
+          <div class="image-context-menu" id="imageContextMenu"></div>
         </div>
       </section>
     </main>
@@ -252,6 +305,8 @@
     const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
     const GROQ_KEY = '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';
     const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+    const GROQ_VISION_PROMPT = 'Analizá esta imagen de apuntes matemáticos. Extraé todo el texto y ecuaciones que veas. Para cada ecuación devolvé el LaTeX correspondiente. Respondé en español, de forma clara y sin markdown.';
     const MYSCRIPT_ENDPOINT = 'https://cloud.myscript.com/api/v4.0/iink/batch';
     const MYSCRIPT_APPLICATION_KEY = '0d7ed1fd-f6e9-476a-994f-4e18442d63f3';
     const MYSCRIPT_HMAC_SECRET = '36d2e1fe-689c-4d54-9888-039e0c4b36a0';
@@ -272,6 +327,286 @@
     let autoRecognizeTimer = null;
     let autoRecognizeInFlight = false;
     const AUTO_RECOGNIZE_DELAY_MS = 1200;
+
+
+    const floatingImages = [];
+    let activeImageState = null;
+    const imageContextMenu = document.getElementById('imageContextMenu');
+
+    function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
+
+    function setActiveImage(imageState) {
+      if (activeImageState?.container) activeImageState.container.classList.remove('active');
+      activeImageState = imageState;
+      if (activeImageState?.container) activeImageState.container.classList.add('active');
+    }
+
+    function getImageSelectionDataUrl(imageState) {
+      if (!imageState.cropRect) return imageState.dataUrl;
+      const source = imageState.img;
+      const scaleX = source.naturalWidth / source.clientWidth;
+      const scaleY = source.naturalHeight / source.clientHeight;
+      const sx = Math.round(imageState.cropRect.x * scaleX);
+      const sy = Math.round(imageState.cropRect.y * scaleY);
+      const sw = Math.max(1, Math.round(imageState.cropRect.w * scaleX));
+      const sh = Math.max(1, Math.round(imageState.cropRect.h * scaleY));
+      const canvasTmp = document.createElement('canvas');
+      canvasTmp.width = sw;
+      canvasTmp.height = sh;
+      const tmpCtx = canvasTmp.getContext('2d');
+      tmpCtx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+      return canvasTmp.toDataURL('image/png');
+    }
+
+    function createRecognitionRecord(text) {
+      const latexLines = text.split('\n').filter(line => /\\|\$|\^|_|=|\(|\)|\[|\]/.test(line));
+      return {
+        texto_reconocido: text,
+        tipo: 'math',
+        resultado: 'Reconocimiento de imagen (Groq Vision)',
+        latex: latexLines.length ? latexLines.join(' | ') : 'No se detectó LaTeX explícito',
+        confianza: 'cloud'
+      };
+    }
+
+    function addRecognitionBlock(rec, position) {
+      const box = document.createElement('div');
+      box.className = 'recognition';
+      if (position) {
+        box.style.left = `${position.left}px`;
+        box.style.top = `${position.top}px`;
+        box.style.right = 'auto';
+      }
+      const badge = rec.tipo === 'formula' ? '📐 Fórmula' : rec.tipo === 'math' ? '∑ Matemática' : '📝 Texto';
+      box.innerHTML = `<span class="badge">${badge}</span>
+      <div class="math-content">${rec.texto_reconocido}</div>
+      <div class="math-result">${rec.resultado}</div>
+      <div class="math-content">LaTeX: ${rec.latex}</div>
+      <button class="btn copy-latex">Copiar LaTeX</button>
+      <button class="btn explain">🤖 Explicar</button>
+      <button class="btn solve">⚡ Resolver</button>`;
+      wrap.appendChild(box);
+      box.querySelector('.copy-latex').onclick = async () => {
+        await navigator.clipboard.writeText(rec.latex);
+        showToast('LaTeX copiado 📋');
+      };
+      box.querySelector('.explain').onclick = () => openAssistant(rec.texto_reconocido);
+      box.querySelector('.solve').onclick = () => openAssistant(`Resolvé esto: ${rec.texto_reconocido}`);
+    }
+
+    function showImageContextMenu(imageState, x, y) {
+      imageContextMenu.innerHTML = '';
+      const items = [
+        ['Mover', () => setActiveImage(imageState)],
+        ['✂️ Recortar', () => startCropMode(imageState)],
+        ['🔍 Reconocer texto/ecuaciones', () => recognizeImage(imageState)],
+        ['🗑️ Eliminar', () => removeFloatingImage(imageState)]
+      ];
+      items.forEach(([label, action]) => {
+        const button = document.createElement('button');
+        button.textContent = label;
+        button.onclick = () => { action(); hideImageContextMenu(); };
+        imageContextMenu.appendChild(button);
+      });
+      const wrapRect = wrap.getBoundingClientRect();
+      imageContextMenu.style.left = `${x - wrapRect.left}px`;
+      imageContextMenu.style.top = `${y - wrapRect.top}px`;
+      imageContextMenu.style.display = 'block';
+    }
+
+    function hideImageContextMenu() { imageContextMenu.style.display = 'none'; }
+
+    function startDragImage(imageState, event) {
+      event.preventDefault();
+      setActiveImage(imageState);
+      hideImageContextMenu();
+      const wrapRect = wrap.getBoundingClientRect();
+      const boxRect = imageState.container.getBoundingClientRect();
+      const offsetX = event.clientX - boxRect.left;
+      const offsetY = event.clientY - boxRect.top;
+
+      const onMove = (moveEvent) => {
+        const left = clamp(moveEvent.clientX - wrapRect.left - offsetX, 0, wrap.clientWidth - imageState.container.offsetWidth);
+        const top = clamp(moveEvent.clientY - wrapRect.top - offsetY, 0, wrap.clientHeight - imageState.container.offsetHeight);
+        imageState.container.style.left = `${left}px`;
+        imageState.container.style.top = `${top}px`;
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+    function startCropMode(imageState) {
+      setActiveImage(imageState);
+      imageState.cropping = true;
+      showToast('Arrastrá sobre la imagen para recortar ✂️');
+    }
+
+    function attachCropHandlers(imageState) {
+      let start = null;
+      imageState.img.addEventListener('mousedown', (e) => {
+        if (!imageState.cropping) return;
+        e.preventDefault();
+        const rect = imageState.img.getBoundingClientRect();
+        start = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        imageState.cropOverlay.style.display = 'block';
+        imageState.cropOverlay.style.left = `${start.x}px`;
+        imageState.cropOverlay.style.top = `${start.y}px`;
+        imageState.cropOverlay.style.width = '0px';
+        imageState.cropOverlay.style.height = '0px';
+
+        const onMove = (moveEvent) => {
+          const cx = clamp(moveEvent.clientX - rect.left, 0, rect.width);
+          const cy = clamp(moveEvent.clientY - rect.top, 0, rect.height);
+          const x = Math.min(start.x, cx);
+          const y = Math.min(start.y, cy);
+          const w = Math.abs(cx - start.x);
+          const h = Math.abs(cy - start.y);
+          imageState.cropOverlay.style.left = `${x}px`;
+          imageState.cropOverlay.style.top = `${y}px`;
+          imageState.cropOverlay.style.width = `${w}px`;
+          imageState.cropOverlay.style.height = `${h}px`;
+          imageState.cropRect = { x, y, w, h };
+        };
+
+        const onUp = () => {
+          imageState.cropping = false;
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+          if (!imageState.cropRect || imageState.cropRect.w < 6 || imageState.cropRect.h < 6) {
+            imageState.cropRect = null;
+            imageState.cropOverlay.style.display = 'none';
+            showToast('Recorte cancelado');
+            return;
+          }
+          showToast('Recorte listo ✅');
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+    }
+
+    async function recognizeImage(imageState) {
+      try {
+        showToast('Reconociendo imagen con Groq Vision... 🔍');
+        const selectedDataUrl = getImageSelectionDataUrl(imageState);
+        const payload = {
+          model: GROQ_VISION_MODEL,
+          max_tokens: 1200,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: GROQ_VISION_PROMPT },
+                {
+                  type: 'image_url',
+                  image_url: { url: selectedDataUrl }
+                }
+              ]
+            }
+          ]
+        };
+        const res = await fetch(GROQ_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${GROQ_KEY}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const errorMessage = await res.text();
+          throw new Error(`Groq Vision ${res.status}: ${errorMessage || res.statusText}`);
+        }
+        const data = await res.json();
+        const content = data?.choices?.[0]?.message?.content?.trim();
+        if (!content) throw new Error('Sin contenido de respuesta');
+        const rec = createRecognitionRecord(content);
+        annotations.push(rec);
+        const imageTop = parseFloat(imageState.container.style.top || '0');
+        const imageLeft = parseFloat(imageState.container.style.left || '0');
+        addRecognitionBlock(rec, {
+          left: imageLeft,
+          top: imageTop + imageState.container.offsetHeight + 10
+        });
+        refreshNotes();
+        showToast('✅ Imagen reconocida');
+      } catch (err) {
+        console.error('Error de reconocimiento de imagen:', err);
+        showToast('No se pudo reconocer la imagen');
+      }
+    }
+
+    function removeFloatingImage(imageState) {
+      const index = floatingImages.indexOf(imageState);
+      if (index >= 0) floatingImages.splice(index, 1);
+      imageState.container.remove();
+      if (activeImageState === imageState) activeImageState = null;
+      hideImageContextMenu();
+    }
+
+    function createFloatingImage(dataUrl, pos = {}) {
+      const container = document.createElement('div');
+      container.className = 'floating-image';
+      const toolbar = document.createElement('div');
+      toolbar.className = 'image-toolbar';
+      toolbar.innerHTML = '<button class="btn crop-btn">✂️ Recortar</button><button class="btn recognize-btn">🔍 Reconocer</button><button class="btn delete-btn">🗑️ Eliminar</button>';
+      const imageWrap = document.createElement('div');
+      imageWrap.style.position = 'relative';
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      const cropOverlay = document.createElement('div');
+      cropOverlay.className = 'crop-overlay';
+      imageWrap.appendChild(img);
+      imageWrap.appendChild(cropOverlay);
+      container.appendChild(toolbar);
+      container.appendChild(imageWrap);
+      wrap.appendChild(container);
+
+      const imageState = { container, toolbar, img, cropOverlay, dataUrl, cropRect: null, cropping: false };
+      floatingImages.push(imageState);
+      setActiveImage(imageState);
+
+      img.onload = () => {
+        const maxWidth = Math.max(220, Math.floor(wrap.clientWidth * 0.45));
+        const finalWidth = Math.min(maxWidth, img.naturalWidth || maxWidth);
+        container.style.width = `${finalWidth}px`;
+        container.style.left = `${clamp(pos.x ?? 120, 0, Math.max(0, wrap.clientWidth - finalWidth))}px`;
+        container.style.top = `${clamp(pos.y ?? 120, 0, Math.max(0, wrap.clientHeight - container.offsetHeight))}px`;
+      };
+
+      toolbar.addEventListener('mousedown', (e) => startDragImage(imageState, e));
+      toolbar.querySelector('.crop-btn').onclick = () => startCropMode(imageState);
+      toolbar.querySelector('.recognize-btn').onclick = () => recognizeImage(imageState);
+      toolbar.querySelector('.delete-btn').onclick = () => removeFloatingImage(imageState);
+      container.addEventListener('mousedown', () => setActiveImage(imageState));
+      container.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        setActiveImage(imageState);
+        showImageContextMenu(imageState, e.clientX, e.clientY);
+      });
+
+      attachCropHandlers(imageState);
+      return imageState;
+    }
+
+    async function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleImageFile(file, pos) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const dataUrl = await fileToDataUrl(file);
+      createFloatingImage(dataUrl, pos);
+    }
 
     const symbolKeys = ['∫','∑','√','∞','π','θ','α','β','Δ','≤','≥','≠','±','×','÷','²','³','xⁿ','d/dx','lim','log','ln','sin','cos','tan'];
     function resizeCanvas() {
@@ -613,26 +948,6 @@
       }
     }
 
-    function addRecognitionBlock(rec) {
-      const box = document.createElement('div');
-      box.className = 'recognition';
-      const badge = rec.tipo === 'formula' ? '📐 Fórmula' : rec.tipo === 'math' ? '∑ Matemática' : '📝 Texto';
-      box.innerHTML = `<span class="badge">${badge}</span>
-      <div class="math-content">${rec.texto_reconocido}</div>
-      <div class="math-result">${rec.resultado}</div>
-      <div class="math-content">LaTeX: ${rec.latex}</div>
-      <button class="btn copy-latex">Copiar LaTeX</button>
-      <button class="btn explain">🤖 Explicar</button>
-      <button class="btn solve">⚡ Resolver</button>`;
-      wrap.appendChild(box);
-      box.querySelector('.copy-latex').onclick = async () => {
-        await navigator.clipboard.writeText(rec.latex);
-        showToast('LaTeX copiado 📋');
-      };
-      box.querySelector('.explain').onclick = () => openAssistant(rec.texto_reconocido);
-      box.querySelector('.solve').onclick = () => openAssistant(`Resolvé esto: ${rec.texto_reconocido}`);
-    }
-
     function refreshNotes() {
       notesPanel.innerHTML = '<h4>📋 Anotaciones</h4>';
       annotations.forEach(a => {
@@ -740,6 +1055,34 @@
     canvas.addEventListener('touchstart', startDraw, { passive: false });
     canvas.addEventListener('touchmove', moveDraw, { passive: false });
     window.addEventListener('touchend', endDraw);
+
+
+    wrap.addEventListener('dragover', (e) => {
+      if (Array.from(e.dataTransfer?.types || []).includes('Files')) e.preventDefault();
+    });
+    wrap.addEventListener('drop', async (e) => {
+      if (!e.dataTransfer?.files?.length) return;
+      e.preventDefault();
+      const wrapRect = wrap.getBoundingClientRect();
+      const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'));
+      if (!file) return;
+      await handleImageFile(file, { x: e.clientX - wrapRect.left, y: e.clientY - wrapRect.top });
+    });
+
+    window.addEventListener('paste', async (e) => {
+      const items = Array.from(e.clipboardData?.items || []);
+      const imageItem = items.find(item => item.type.startsWith('image/'));
+      if (!imageItem) return;
+      e.preventDefault();
+      const file = imageItem.getAsFile();
+      if (!file) return;
+      await handleImageFile(file, { x: 120, y: 120 });
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (!imageContextMenu.contains(e.target)) hideImageContextMenu();
+    });
+    window.addEventListener('scroll', hideImageContextMenu, true);
 
     document.getElementById('recognizeBtn').onclick = recognizeDrawing;
     document.getElementById('mathModeBtn').onclick = (e) => {
