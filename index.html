@@ -308,6 +308,7 @@
     const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
     const GROQ_VISION_PROMPT = 'Analizá esta imagen de apuntes matemáticos. Extraé todo el texto y ecuaciones que veas. Para cada ecuación devolvé el LaTeX correspondiente. Respondé en español, de forma clara y sin markdown.';
     const MYSCRIPT_ENDPOINT = 'https://cloud.myscript.com/api/v4.0/iink/batch';
+    const MYSCRIPT_PROXY_ENDPOINT = '';
     const MYSCRIPT_APPLICATION_KEY = '0d7ed1fd-f6e9-476a-994f-4e18442d63f3';
     const MYSCRIPT_HMAC_SECRET = '36d2e1fe-689c-4d54-9888-039e0c4b36a0';
 
@@ -326,6 +327,7 @@
     let recognizedStrokeCount = 0;
     let autoRecognizeTimer = null;
     let autoRecognizeInFlight = false;
+    let hasWarnedMyScriptCors = false;
     const AUTO_RECOGNIZE_DELAY_MS = 1200;
 
 
@@ -334,6 +336,19 @@
     const imageContextMenu = document.getElementById('imageContextMenu');
 
     function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
+
+    function resolveMyScriptEndpoint() {
+      const endpoint = MYSCRIPT_PROXY_ENDPOINT.trim() || MYSCRIPT_ENDPOINT;
+      const target = new URL(endpoint, window.location.href);
+      if (target.origin !== window.location.origin && !MYSCRIPT_PROXY_ENDPOINT.trim()) {
+        if (!hasWarnedMyScriptCors) {
+          showToast('⚠️ Reconocimiento desactivado: configurá un proxy backend para MyScript');
+          hasWarnedMyScriptCors = true;
+        }
+        return null;
+      }
+      return target.toString();
+    }
 
     function setActiveImage(imageState) {
       if (activeImageState?.container) activeImageState.container.classList.remove('active');
@@ -887,6 +902,8 @@
 
     async function recognizeDrawing(options = {}) {
       const { onlyNew = false } = options;
+      const endpoint = resolveMyScriptEndpoint();
+      if (!endpoint) return null;
       const fromIndex = onlyNew ? recognizedStrokeCount : 0;
       const inkStrokes = collectInkStrokes(fromIndex);
       if (!inkStrokes.length) {
@@ -914,7 +931,7 @@
       const body = JSON.stringify(bodyPayload);
       try {
         const signature = await signBodyWithHmac(body);
-        const res = await fetch(MYSCRIPT_ENDPOINT, {
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -942,7 +959,7 @@
         recognizedStrokeCount = strokes.length;
         return found;
       } catch (err) {
-        console.error('Error de reconocimiento MyScript:', err);
+        console.warn('Reconocimiento MyScript no disponible:', err.message);
         showToast('No se pudo reconocer, seguí escribiendo...');
         return null;
       }
