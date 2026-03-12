@@ -18,17 +18,25 @@
       --canvas: #fffef7;
       --muted: #6b7280;
     }
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; overflow: hidden; }
+
     body {
-      margin: 0;
       font-family: 'Sora', sans-serif;
       background: var(--bg);
       color: var(--text);
+      display: flex;
+      flex-direction: column;
       height: 100vh;
-      overflow: hidden;
     }
-    .app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
-    .ribbon { background: #fff; border-bottom: 1px solid #ddd6fe; }
+
+    /* RIBBON */
+    .ribbon {
+      background: #fff;
+      border-bottom: 1px solid #ddd6fe;
+      flex-shrink: 0;
+    }
     .tabs-row {
       background: var(--sidebar-bg);
       color: #fff;
@@ -37,634 +45,642 @@
       padding: 8px 16px;
       font-size: 14px;
     }
-    .tabs-row .tab.active { color: #c4b5fd; font-weight: 700; }
+    .tabs-row .tab { cursor: pointer; opacity: 0.7; }
+    .tabs-row .tab:hover { opacity: 1; }
+    .tabs-row .tab.active { color: #c4b5fd; font-weight: 700; opacity: 1; }
     .tools-row {
       display: flex;
-      gap: 18px;
-      padding: 10px 14px;
+      gap: 12px;
+      padding: 8px 14px;
       overflow-x: auto;
-      border-top: 1px solid #ddd6fe;
+      align-items: flex-start;
+      scrollbar-width: none;
     }
-    .group { min-width: max-content; border-right: 1px solid #e5e7eb; padding-right: 14px; }
+    .tools-row::-webkit-scrollbar { display: none; }
+    .group {
+      min-width: max-content;
+      border-right: 1px solid #e5e7eb;
+      padding-right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
     .group:last-child { border-right: none; }
-    .group h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .group h4 { font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    .group-btns { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+
     .btn {
       border: 1px solid #ddd6fe;
       background: #fff;
-      border-radius: 10px;
-      padding: 7px 10px;
-      margin-right: 6px;
+      border-radius: 8px;
+      padding: 6px 10px;
       font-family: inherit;
+      font-size: 13px;
       cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.12s;
+      line-height: 1;
     }
+    .btn:hover { background: var(--accent-light); border-color: #a78bfa; color: var(--accent-text); }
     .btn.active { background: var(--accent-light); color: var(--accent-text); border-color: #a78bfa; }
+
     .color-swatch {
-      width: 24px;
-      height: 24px;
-      border-radius: 999px;
+      width: 22px; height: 22px;
+      border-radius: 50%;
       border: 2px solid transparent;
       display: inline-block;
       cursor: pointer;
-      margin-right: 6px;
+      transition: transform 0.1s;
+      flex-shrink: 0;
     }
-    .color-swatch.active { border-color: #111827; transform: scale(1.08); }
-    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active { border-color: #111827; transform: scale(1.12); }
+
+    /* MAIN LAYOUT */
+    .layout {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* SIDEBAR */
     .sidebar {
+      width: 220px;
+      flex-shrink: 0;
       background: var(--sidebar-bg);
       color: #e5e7eb;
-      padding: 16px;
+      padding: 14px 12px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
+      overflow-y: auto;
     }
-    .sidebar h3 { margin: 0 0 8px; color: #c4b5fd; font-size: 14px; }
-    .sidebar ul { list-style: none; margin: 0; padding: 0; }
-    .sidebar li { margin-bottom: 8px; font-size: 14px; }
+    .sidebar h3 { color: #c4b5fd; font-size: 13px; margin-bottom: 6px; }
+    .sidebar ul { list-style: none; }
+    .sidebar li { margin-bottom: 6px; font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+    .sidebar li:hover { background: rgba(255,255,255,0.06); }
+    .sidebar li.active { background: rgba(124,58,237,0.2); color: #c4b5fd; }
     .new-page {
       border: 1px solid #a78bfa;
       color: #c4b5fd;
       background: transparent;
-      border-radius: 10px;
-      padding: 8px;
+      border-radius: 8px;
+      padding: 7px;
       font-family: inherit;
+      font-size: 13px;
       cursor: pointer;
+      transition: background 0.12s;
     }
-    .tip { margin-top: auto; color: #9ca3af; font-size: 12px; }
-    .content { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
-    .page-tabs { display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #ddd6fe; background: #fff; }
-    .page-tab { padding: 8px 12px; border-radius: 10px; background: #f8fafc; cursor: pointer; }
-    .page-tab.active { border-bottom: 3px solid var(--accent); background: #f5f3ff; }
-    .canvas-wrap { position: relative; min-height: 0; background: var(--canvas); }
-    .canvas-bg {
-      position: absolute; inset: 0;
-      background-color: var(--canvas);
-      background-image: radial-gradient(#e5e7eb 0.8px, transparent 0.8px);
-      background-size: 18px 18px;
-      opacity: 0.8;
+    .new-page:hover { background: rgba(124,58,237,0.15); }
+    .tip { color: #6c7086; font-size: 11px; line-height: 1.5; margin-top: auto; padding: 8px; background: rgba(255,255,255,0.04); border-radius: 8px; }
+
+    /* CONTENT */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
     }
-    .title-area {
+    .page-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 8px 14px 0;
+      border-bottom: 1px solid #ddd6fe;
+      background: #fff;
+      flex-shrink: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .page-tabs::-webkit-scrollbar { display: none; }
+    .page-tab {
+      padding: 6px 14px;
+      border-radius: 8px 8px 0 0;
+      background: #f8fafc;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+      border: 1px solid #e5e7eb;
+      border-bottom: none;
+      transition: background 0.12s;
+    }
+    .page-tab:hover { background: #f0ebff; }
+    .page-tab.active { border-bottom: 3px solid var(--accent); background: #f5f3ff; color: var(--accent-text); font-weight: 600; }
+
+    /* CANVAS SCROLL AREA */
+    .canvas-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: auto;
+      background: var(--bg);
+      padding: 24px;
+    }
+
+    /* zoom wrapper — this is what actually scales */
+    .zoom-wrapper {
+      display: flex;
+      justify-content: center;
+      transform-origin: top center;
+      /* width/height set by JS */
+    }
+
+    /* THE ACTUAL PAGE */
+    .page-sheet {
+      width: 860px;
+      min-width: 860px;
+      min-height: calc(100vh - 200px);
+      background: var(--canvas);
+      border-radius: 4px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.09);
+      position: relative;
+      flex-shrink: 0;
+      /* NO background-image here — dots only on the dot-layer below */
+    }
+
+    /* dot pattern layer — sits below everything, doesn't scale twice */
+    .dot-layer {
       position: absolute;
-      left: 24px;
-      right: 24px;
-      top: 12px;
-      z-index: 3;
-      background: rgba(255, 254, 247, 0.85);
-      border-bottom: 2px solid var(--accent);
-      padding-bottom: 8px;
+      inset: 0;
+      z-index: 0;
+      border-radius: 4px;
+      background-image: radial-gradient(#d1cfc4 0.7px, transparent 0.7px);
+      background-size: 20px 20px;
+      pointer-events: none;
     }
+
+    .title-area {
+      padding: 24px 40px 14px;
+      border-bottom: 2px solid var(--accent-light);
+      position: relative;
+      z-index: 2;
+      background: rgba(255,254,247,0.92);
+    }
+    .date-line { color: var(--muted); font-size: 12px; margin-bottom: 6px; font-family: 'JetBrains Mono', monospace; }
     #pageTitle {
       border: none;
       background: transparent;
       width: 100%;
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--text);
       outline: none;
+      font-family: 'Sora', sans-serif;
     }
-    .date-line { color: var(--muted); font-size: 13px; }
-    #drawCanvas { position: absolute; inset: 0; z-index: 2; touch-action: none; }
-    .hint { position: absolute; left: 28px; top: 120px; color: #9ca3af; font-size: 18px; z-index: 1; }
+
+    /* DRAWING LAYER — important: pointer-events only when tool is active */
+    .draw-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+    }
+    #drawCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    .hint {
+      position: absolute;
+      left: 40px;
+      top: 110px;
+      color: #c8c4b4;
+      font-size: 16px;
+      z-index: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* STATUS BAR */
     .status {
       background: #111827;
       color: #d1d5db;
-      font-size: 13px;
+      font-size: 12px;
       display: flex;
       justify-content: space-between;
-      padding: 7px 12px;
+      align-items: center;
+      padding: 5px 14px;
+      flex-shrink: 0;
+      gap: 12px;
     }
     .pulse { display: inline-flex; align-items: center; gap: 6px; }
-    .pulse-dot {
-      width: 8px; height: 8px; border-radius: 999px; background: #22c55e;
-      animation: pulse 1.4s infinite;
-    }
+    .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: pulse 1.4s infinite; }
     .auto-recognition-status {
       display: none;
       align-items: center;
       gap: 6px;
       color: #c4b5fd;
-      animation: wait-blink 1s ease-in-out infinite;
     }
-    .auto-recognition-status .mini-spinner {
-      width: 10px;
-      height: 10px;
-      border: 2px solid rgba(196, 181, 253, 0.35);
+    .mini-spinner {
+      width: 10px; height: 10px;
+      border: 2px solid rgba(196,181,253,0.35);
       border-top-color: #c4b5fd;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
-    @keyframes pulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes wait-blink { 0%,100% { opacity: .6; } 50% { opacity: 1; } }
 
-    .toast-container { position: fixed; top: 16px; right: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+    @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* TOASTS */
+    .toast-container { position: fixed; top: 14px; right: 14px; z-index: 9999; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
     .toast {
       background: #1e1e2e;
       color: #fff;
       border-radius: 10px;
-      padding: 10px 14px;
-      animation: fade 2.5s forwards;
+      padding: 9px 14px;
+      font-size: 13px;
+      animation: toastIn 2.8s forwards;
+      pointer-events: none;
     }
-    @keyframes fade { 0%,80% {opacity:1; transform: translateY(0);} 100% {opacity:0; transform: translateY(-6px);} }
+    @keyframes toastIn { 0%{opacity:0;transform:translateY(-6px)} 10%,80%{opacity:1;transform:translateY(0)} 100%{opacity:0} }
 
-    .recognition, .assistant, .notes-panel, .math-keyboard {
-      position: absolute; z-index: 7; background: #fff; border: 1px solid #ddd6fe; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    /* RECOGNITION BLOCK */
+    .recognition {
+      position: absolute;
+      z-index: 10;
+      background: #fff;
+      border: 1.5px solid #a78bfa;
+      border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(124,58,237,0.12);
+      padding: 12px 14px;
+      width: 340px;
+      animation: popIn 0.2s ease;
     }
-    .recognition { right: 24px; top: 120px; width: 360px; padding: 12px; }
-    .badge { display: inline-block; background: var(--accent-light); color: var(--accent-text); border-radius: 999px; font-size: 12px; padding: 3px 8px; }
-    .math-content { font-family: 'JetBrains Mono', monospace; margin: 10px 0; }
-    .math-result { color: var(--accent-text); font-weight: 600; margin-bottom: 6px; }
+    @keyframes popIn { from{transform:scale(0.92);opacity:0} to{transform:scale(1);opacity:1} }
+    .rec-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .badge { display: inline-block; background: var(--accent-light); color: var(--accent-text); border-radius: 20px; font-size: 11px; padding: 3px 10px; font-weight: 600; }
+    .rec-close { border: none; background: none; cursor: pointer; color: #9ca3af; font-size: 16px; padding: 0 2px; line-height: 1; }
+    .rec-close:hover { color: #dc2626; }
+    .math-content { font-family: 'JetBrains Mono', monospace; font-size: 14px; margin: 6px 0; line-height: 1.6; }
+    .math-result { color: var(--accent-text); font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    .latex-line { font-size: 11px; color: #9ca3af; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; word-break: break-all; }
+    .rec-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rec-actions .btn { padding: 4px 10px; font-size: 12px; }
 
-    .assistant { right: 24px; bottom: 24px; width: 380px; padding: 12px; display: none; }
-    .assistant textarea { width: 100%; min-height: 70px; }
-    .assistant .response { white-space: pre-wrap; margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+    /* ASSISTANT */
+    .assistant {
+      position: fixed;
+      right: 20px;
+      bottom: 48px;
+      width: 360px;
+      z-index: 200;
+      background: #fff;
+      border: 1px solid #ddd6fe;
+      border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+      padding: 14px;
+      display: none;
+    }
+    .assistant-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: 600; }
+    .assistant textarea {
+      width: 100%;
+      min-height: 60px;
+      border: 1px solid #ddd6fe;
+      border-radius: 8px;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+    }
+    .assistant textarea:focus { border-color: #a78bfa; }
+    .response {
+      white-space: pre-wrap;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 13px;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+    }
 
-    .notes-panel { top: 0; right: 0; bottom: 0; width: 280px; padding: 12px; border-radius: 0; display: none; overflow-y: auto; }
-    .notes-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; margin-bottom: 8px; cursor: pointer; }
+    /* NOTES PANEL */
+    .notes-panel {
+      position: fixed;
+      right: 0; top: 0; bottom: 0;
+      width: 270px;
+      z-index: 150;
+      background: #fff;
+      border-left: 1px solid #ddd6fe;
+      padding: 16px 12px;
+      display: none;
+      overflow-y: auto;
+    }
+    .notes-panel h4 { margin-bottom: 10px; color: var(--accent-text); }
+    .notes-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 0.1s;
+    }
+    .notes-item:hover { border-color: #a78bfa; background: var(--accent-light); }
 
-    .math-keyboard { left: 50%; transform: translateX(-50%); bottom: 14px; padding: 10px; display: none; max-width: 90%; }
-    .key { margin: 4px; padding: 6px 8px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f8fafc; cursor: pointer; }
-    .close-red { background: #dc2626; color: #fff; border-color: #dc2626; }
+    /* MATH KEYBOARD */
+    .math-keyboard {
+      position: fixed;
+      left: 50%; transform: translateX(-50%);
+      bottom: 48px;
+      z-index: 200;
+      background: #fff;
+      border: 1px solid #ddd6fe;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      padding: 10px;
+      display: none;
+      max-width: 500px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .math-keyboard.open { display: flex; }
+    .key {
+      padding: 6px 10px;
+      border-radius: 7px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      transition: all 0.1s;
+    }
+    .key:hover { background: var(--accent-light); border-color: #a78bfa; color: var(--accent-text); }
+    .close-red { background: #dc2626; color: #fff; border-color: #dc2626; font-family: inherit; font-size: 12px; }
+    .close-red:hover { background: #b91c1c; }
 
+    /* FLOATING IMAGES */
     .floating-image {
       position: absolute;
       z-index: 8;
-      border: 1px solid #c4b5fd;
-      border-radius: 12px;
+      border: 1.5px solid #c4b5fd;
+      border-radius: 10px;
       background: #fff;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      overflow: visible;
       user-select: none;
-      touch-action: none;
     }
-    .floating-image.active { box-shadow: 0 0 0 2px #7c3aed, 0 8px 24px rgba(0, 0, 0, 0.15); }
+    .floating-image.active { box-shadow: 0 0 0 2px var(--accent), 0 6px 20px rgba(0,0,0,0.15); }
     .image-toolbar {
       display: flex;
-      gap: 6px;
-      padding: 6px;
+      gap: 4px;
+      padding: 5px 6px;
       border-bottom: 1px solid #ede9fe;
       background: #faf5ff;
       cursor: move;
+      border-radius: 10px 10px 0 0;
     }
-    .image-toolbar .btn { margin-right: 0; padding: 5px 8px; }
-    .floating-image img { display: block; width: 100%; height: auto; }
+    .image-toolbar .btn { padding: 4px 8px; font-size: 12px; }
+    .floating-image img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 0 0 8px 8px; }
     .crop-overlay {
       position: absolute;
-      border: 2px dashed #7c3aed;
-      background: rgba(124, 58, 237, 0.2);
+      border: 2px dashed var(--accent);
+      background: rgba(124,58,237,0.15);
       pointer-events: none;
       display: none;
     }
     .image-context-menu {
-      position: absolute;
-      z-index: 30;
+      position: fixed;
+      z-index: 9000;
       background: #fff;
       border: 1px solid #ddd6fe;
       border-radius: 10px;
-      box-shadow: 0 10px 20px rgba(0,0,0,.15);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.14);
       padding: 6px;
       min-width: 180px;
       display: none;
     }
     .image-context-menu button {
-      width: 100%;
-      text-align: left;
-      border: none;
-      background: transparent;
-      padding: 8px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-family: inherit;
+      width: 100%; text-align: left;
+      border: none; background: transparent;
+      padding: 8px 10px; border-radius: 6px;
+      cursor: pointer; font-family: inherit; font-size: 13px;
     }
-    .image-context-menu button:hover { background: #f5f3ff; }
+    .image-context-menu button:hover { background: var(--accent-light); color: var(--accent-text); }
 
-    .cursor-circle-black { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%231e1b4b' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    /* CURSORS */
+    .cursor-circle-black  { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%231e1b4b' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
     .cursor-circle-violet { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%237c3aed' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
-    .cursor-circle-red { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23dc2626' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
-    .cursor-circle-blue { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%232563eb' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
-    .cursor-circle-green { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%2316a34a' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-red    { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23dc2626' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-blue   { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%232563eb' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-green  { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%2316a34a' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
     .cursor-circle-orange { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23ea580c' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
-    .cursor-eraser { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect x='4' y='4' width='12' height='12' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") 10 10, cell; }
+    .cursor-eraser        { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect x='4' y='4' width='12' height='12' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") 10 10, cell; }
   </style>
 </head>
 <body>
-  <div class="app">
-    <header class="ribbon">
-      <div class="tabs-row"><span class="tab active">Inicio</span><span class="tab">Insertar</span><span class="tab">Vista</span><span class="tab">Compartir</span></div>
-      <div class="tools-row">
-        <div class="group"><h4>Herramientas</h4><button class="btn active" data-tool="pencil">Lápiz ✏️</button><button class="btn" data-tool="highlight">Resaltador 🖍️</button><button class="btn" data-tool="eraser">Borrador 🧹</button><button class="btn">Seleccionar</button><button class="btn">Texto</button></div>
-        <div class="group"><h4>Colores</h4><span class="color-swatch active" data-color="#1e1b4b" style="background:#1e1b4b"></span><span class="color-swatch" data-color="#7c3aed" style="background:#7c3aed"></span><span class="color-swatch" data-color="#dc2626" style="background:#dc2626"></span><span class="color-swatch" data-color="#2563eb" style="background:#2563eb"></span><span class="color-swatch" data-color="#16a34a" style="background:#16a34a"></span><span class="color-swatch" data-color="#ea580c" style="background:#ea580c"></span></div>
-        <div class="group"><h4>Grosor</h4><button class="btn size-btn" data-size="2">Fino</button><button class="btn size-btn active" data-size="4">Normal</button><button class="btn size-btn" data-size="7">Grueso</button><button class="btn size-btn" data-size="10">Extra</button></div>
-        <div class="group"><h4>IA + Mate</h4><button class="btn" id="recognizeBtn">✨ Reconocer</button><button class="btn" id="mathModeBtn">∑ modo matemático</button><button class="btn" id="kbdToggle">⌨️</button></div>
-        <div class="group"><h4>Editar</h4><button class="btn" id="undoBtn">↩️</button><button class="btn" id="redoBtn">↪️</button><button class="btn" id="clearBtn">🗑️</button><button class="btn" id="notesToggle">📋</button></div>
-        <div class="group"><h4>IA/Export</h4><button class="btn" id="assistantToggle">🤖</button><button class="btn" id="exportBtn">📤</button></div>
-      </div>
-    </header>
 
-    <main class="layout">
-      <aside class="sidebar">
-        <div><h3>📚 Cuadernos</h3><ul><li>📘 Álgebra</li><li>📗 Cálculo</li><li>📙 Geometría</li></ul></div>
-        <div><h3>📄 Páginas</h3><ul><li>• Unidad 1</li><li style="padding-left:16px">↳ Límites</li><li style="padding-left:16px">↳ Derivadas</li></ul></div>
-        <button class="new-page">+ Nueva página</button>
-        <div class="tip">Tip: usá Enter para reconocer y Ctrl+Z/Ctrl+Y para historial.</div>
-      </aside>
-
-      <section class="content">
-        <div class="page-tabs"><div class="page-tab active">Página 1</div><div class="page-tab">Página 2</div><div class="page-tab">Página 3</div></div>
-        <div class="canvas-wrap" id="canvasWrap">
-          <div class="canvas-bg"></div>
-          <div class="title-area">
-            <input id="pageTitle" value="Apuntes de Cálculo"/>
-            <div class="date-line" id="dateLine"></div>
-          </div>
-          <div class="hint" id="drawHint">Dibujá acá...</div>
-          <canvas id="drawCanvas"></canvas>
-          <aside class="notes-panel" id="notesPanel"></aside>
-          <div class="assistant" id="assistantPanel">
-            <strong>🤖 Asistente IA</strong>
-            <textarea id="assistantInput" placeholder="Preguntá algo matemático..."></textarea>
-            <button class="btn" id="askBtn">Consultar</button>
-            <div class="response" id="assistantResponse"></div>
-          </div>
-          <div class="math-keyboard" id="mathKeyboard"></div>
-          <div class="image-context-menu" id="imageContextMenu"></div>
+  <!-- RIBBON -->
+  <header class="ribbon">
+    <div class="tabs-row">
+      <span class="tab active">Inicio</span>
+      <span class="tab">Insertar</span>
+      <span class="tab">Vista</span>
+      <span class="tab">Compartir</span>
+    </div>
+    <div class="tools-row">
+      <div class="group">
+        <h4>Herramientas</h4>
+        <div class="group-btns">
+          <button class="btn active" data-tool="pencil">✏️ Lápiz</button>
+          <button class="btn" data-tool="highlight">🖍️ Resalt.</button>
+          <button class="btn" data-tool="eraser">🧹 Borrar</button>
         </div>
-      </section>
-    </main>
+      </div>
+      <div class="group">
+        <h4>Colores</h4>
+        <div class="group-btns">
+          <span class="color-swatch active" data-color="#1e1b4b" style="background:#1e1b4b"></span>
+          <span class="color-swatch" data-color="#7c3aed" style="background:#7c3aed"></span>
+          <span class="color-swatch" data-color="#dc2626" style="background:#dc2626"></span>
+          <span class="color-swatch" data-color="#2563eb" style="background:#2563eb"></span>
+          <span class="color-swatch" data-color="#16a34a" style="background:#16a34a"></span>
+          <span class="color-swatch" data-color="#ea580c" style="background:#ea580c"></span>
+        </div>
+      </div>
+      <div class="group">
+        <h4>Grosor</h4>
+        <div class="group-btns">
+          <button class="btn size-btn" data-size="1.5">Fino</button>
+          <button class="btn size-btn active" data-size="3">Normal</button>
+          <button class="btn size-btn" data-size="6">Grueso</button>
+          <button class="btn size-btn" data-size="10">Extra</button>
+        </div>
+      </div>
+      <div class="group">
+        <h4>IA + Mate</h4>
+        <div class="group-btns">
+          <button class="btn" id="recognizeBtn">✨ Reconocer</button>
+          <button class="btn active" id="mathModeBtn">∑ Matemático</button>
+          <button class="btn" id="kbdToggle">⌨️</button>
+        </div>
+      </div>
+      <div class="group">
+        <h4>Editar</h4>
+        <div class="group-btns">
+          <button class="btn" id="undoBtn">↩️ Deshacer</button>
+          <button class="btn" id="redoBtn">↪️ Rehacer</button>
+          <button class="btn" id="clearBtn">🗑️ Limpiar</button>
+          <button class="btn" id="notesToggle">📋 Notas</button>
+        </div>
+      </div>
+      <div class="group">
+        <h4>IA / Export</h4>
+        <div class="group-btns">
+          <button class="btn" id="assistantToggle">🤖 Asistente</button>
+          <button class="btn" id="exportBtn">📤 Exportar</button>
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <footer class="status">
-      <span class="pulse"><span class="pulse-dot"></span> Motor IA: online</span>
-      <span id="statusMode">Modo: pencil</span>
-      <span id="statusColor">Color: #1e1b4b</span>
-      <span class="auto-recognition-status" id="autoRecognitionStatus"><span class="mini-spinner"></span> Reconociendo en breve...</span>
-      <span id="statusCount">Trazos: 0</span>
-    </footer>
+  <!-- MAIN -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div>
+        <h3>📚 Cuadernos</h3>
+        <ul id="notebookList"></ul>
+        <button class="new-page" id="addNotebookBtn" style="margin-top:6px;font-size:12px;">+ Cuaderno</button>
+      </div>
+      <div style="margin-top:12px">
+        <h3>📄 Páginas</h3>
+        <ul id="pageList"></ul>
+      </div>
+      <button class="new-page" id="addPageBtn">+ Nueva página</button>
+      <div class="tip">💡 Dibujá con el lápiz. Después de 1.2s se reconoce. Ctrl+V para pegar imágenes.<br>Click derecho en página/cuaderno para renombrar o borrar.</div>
+    </aside>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="page-tabs" id="pageTabs"></div>
+
+      <!-- SCROLL AREA -->
+      <div class="canvas-scroll" id="canvasScroll">
+        <div class="zoom-wrapper" id="zoomWrapper">
+          <div class="page-sheet" id="pageSheet">
+
+            <!-- dot pattern -->
+            <div class="dot-layer"></div>
+
+            <div class="title-area">
+              <div class="date-line" id="dateLine"></div>
+              <input id="pageTitle" value="Apuntes de Cálculo" />
+            </div>
+
+            <div class="hint" id="drawHint">✏️ Dibujá acá con el lápiz...</div>
+
+            <!-- DRAWING LAYER — full sheet size, pointer-events controlled by JS -->
+            <div class="draw-layer" id="drawLayer">
+              <canvas id="drawCanvas"></canvas>
+            </div>
+
+            <!-- floating images and recognition blocks go here too (appended by JS) -->
+            <div class="image-context-menu" id="imageContextMenu"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- STATUS BAR -->
+  <footer class="status">
+    <span class="pulse"><span class="pulse-dot"></span> Motor IA: online</span>
+    <span id="statusMode">Modo: lápiz</span>
+    <span id="statusColor">Color: #1e1b4b</span>
+    <span class="auto-recognition-status" id="autoRecognitionStatus">
+      <span class="mini-spinner"></span> Reconociendo en breve...
+    </span>
+    <span id="statusCount">Trazos: 0</span>
+    <span style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+      <button id="zoomOutBtn" style="background:transparent;border:1px solid #374151;color:#d1d5db;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:14px;line-height:1;">−</button>
+      <span id="zoomLabel" style="min-width:42px;text-align:center;font-size:12px;color:#d1d5db;">100%</span>
+      <button id="zoomInBtn"  style="background:transparent;border:1px solid #374151;color:#d1d5db;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:14px;line-height:1;">+</button>
+      <button id="zoomResetBtn" style="background:transparent;border:1px solid #374151;color:#9ca3af;border-radius:5px;padding:2px 8px;cursor:pointer;font-size:11px;line-height:1;">Reset</button>
+    </span>
+  </footer>
+
+  <!-- FLOATING PANELS (outside sheet so z-index works) -->
+  <div class="notes-panel" id="notesPanel"></div>
+  <div class="assistant" id="assistantPanel">
+    <div class="assistant-header">
+      <span>🤖 Asistente Matemático</span>
+      <button class="btn" id="closeAssistant" style="padding:2px 8px;font-size:12px;">✕</button>
+    </div>
+    <textarea id="assistantInput" placeholder="Preguntá algo matemático..."></textarea>
+    <button class="btn" id="askBtn" style="margin-top:6px;width:100%;">Consultar →</button>
+    <div class="response" id="assistantResponse"></div>
+  </div>
+  <div class="math-keyboard" id="mathKeyboard"></div>
   <div class="toast-container" id="toasts"></div>
 
   <script>
-    const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-    const GROQ_KEY = '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';
-    const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    /* ============================================================
+       CONSTANTS
+    ============================================================ */
+    const GROQ_ENDPOINT     = 'https://api.groq.com/openai/v1/chat/completions';
+    const GROQ_KEY          = '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';
+    const GROQ_MODEL        = 'llama-3.3-70b-versatile';
     const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
     const GROQ_VISION_PROMPT = 'Analizá esta imagen de apuntes matemáticos. Extraé todo el texto y ecuaciones que veas. Para cada ecuación devolvé el LaTeX correspondiente. Respondé en español, de forma clara y sin markdown.';
-    const MYSCRIPT_ENDPOINT = 'https://cloud.myscript.com/api/v4.0/iink/batch';
-    const MYSCRIPT_PROXY_ENDPOINT = '';
-    const MYSCRIPT_APPLICATION_KEY = '0d7ed1fd-f6e9-476a-994f-4e18442d63f3';
+    const MYSCRIPT_ENDPOINT  = 'https://cloud.myscript.com/api/v4.0/iink/batch';
+    const MYSCRIPT_APP_KEY   = '0d7ed1fd-f6e9-476a-994f-4e18442d63f3';
     const MYSCRIPT_HMAC_SECRET = '36d2e1fe-689c-4d54-9888-039e0c4b36a0';
+    const AUTO_DELAY = 1200;
 
-    const canvas = document.getElementById('drawCanvas');
-    const ctx = canvas.getContext('2d');
-    const wrap = document.getElementById('canvasWrap');
-    const toasts = document.getElementById('toasts');
-    const notesPanel = document.getElementById('notesPanel');
-    const hint = document.getElementById('drawHint');
-    const autoRecognitionStatus = document.getElementById('autoRecognitionStatus');
+    /* ============================================================
+       CANVAS SETUP
+    ============================================================ */
+    const sheet     = document.getElementById('pageSheet');
+    const drawLayer = document.getElementById('drawLayer');
+    const canvas    = document.getElementById('drawCanvas');
+    const ctx       = canvas.getContext('2d');
+    const hint      = document.getElementById('drawHint');
 
-    let strokes = [], annotations = [], undoStack = [], redoStack = [];
-    let currentTool = 'pencil', currentColor = '#1e1b4b', currentSize = 4;
+    let strokes = [], undoStack = [], redoStack = [], annotations = [];
+    let currentTool = 'pencil', currentColor = '#1e1b4b', currentSize = 3;
     let drawing = false, currentStroke = [];
     let isMathMode = true;
     let recognizedStrokeCount = 0;
-    let autoRecognizeTimer = null;
-    let autoRecognizeInFlight = false;
-    let hasWarnedMyScriptCors = false;
-    const AUTO_RECOGNIZE_DELAY_MS = 1200;
+    let autoTimer = null;
+    let autoInFlight = false;
+    let hasWarnedCors = false;
 
-
-    const floatingImages = [];
-    let activeImageState = null;
-    const imageContextMenu = document.getElementById('imageContextMenu');
-
-    function clamp(value, min, max) { return Math.min(Math.max(value, min), max); }
-
-    function resolveMyScriptEndpoint() {
-      const endpoint = MYSCRIPT_PROXY_ENDPOINT.trim() || MYSCRIPT_ENDPOINT;
-      const target = new URL(endpoint, window.location.href);
-      if (target.origin !== window.location.origin && !MYSCRIPT_PROXY_ENDPOINT.trim()) {
-        if (!hasWarnedMyScriptCors) {
-          showToast('⚠️ Reconocimiento desactivado: configurá un proxy backend para MyScript');
-          hasWarnedMyScriptCors = true;
-        }
-        return null;
-      }
-      return target.toString();
-    }
-
-    function setActiveImage(imageState) {
-      if (activeImageState?.container) activeImageState.container.classList.remove('active');
-      activeImageState = imageState;
-      if (activeImageState?.container) activeImageState.container.classList.add('active');
-    }
-
-    function getImageSelectionDataUrl(imageState) {
-      if (!imageState.cropRect) return imageState.dataUrl;
-      const source = imageState.img;
-      const scaleX = source.naturalWidth / source.clientWidth;
-      const scaleY = source.naturalHeight / source.clientHeight;
-      const sx = Math.round(imageState.cropRect.x * scaleX);
-      const sy = Math.round(imageState.cropRect.y * scaleY);
-      const sw = Math.max(1, Math.round(imageState.cropRect.w * scaleX));
-      const sh = Math.max(1, Math.round(imageState.cropRect.h * scaleY));
-      const canvasTmp = document.createElement('canvas');
-      canvasTmp.width = sw;
-      canvasTmp.height = sh;
-      const tmpCtx = canvasTmp.getContext('2d');
-      tmpCtx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
-      return canvasTmp.toDataURL('image/png');
-    }
-
-    function createRecognitionRecord(text) {
-      const latexLines = text.split('\n').filter(line => /\\|\$|\^|_|=|\(|\)|\[|\]/.test(line));
-      return {
-        texto_reconocido: text,
-        tipo: 'math',
-        resultado: 'Reconocimiento de imagen (Groq Vision)',
-        latex: latexLines.length ? latexLines.join(' | ') : 'No se detectó LaTeX explícito',
-        confianza: 'cloud'
-      };
-    }
-
-    function addRecognitionBlock(rec, position) {
-      const box = document.createElement('div');
-      box.className = 'recognition';
-      if (position) {
-        box.style.left = `${position.left}px`;
-        box.style.top = `${position.top}px`;
-        box.style.right = 'auto';
-      }
-      const badge = rec.tipo === 'formula' ? '📐 Fórmula' : rec.tipo === 'math' ? '∑ Matemática' : '📝 Texto';
-      box.innerHTML = `<span class="badge">${badge}</span>
-      <div class="math-content">${rec.texto_reconocido}</div>
-      <div class="math-result">${rec.resultado}</div>
-      <div class="math-content">LaTeX: ${rec.latex}</div>
-      <button class="btn copy-latex">Copiar LaTeX</button>
-      <button class="btn explain">🤖 Explicar</button>
-      <button class="btn solve">⚡ Resolver</button>`;
-      wrap.appendChild(box);
-      box.querySelector('.copy-latex').onclick = async () => {
-        await navigator.clipboard.writeText(rec.latex);
-        showToast('LaTeX copiado 📋');
-      };
-      box.querySelector('.explain').onclick = () => openAssistant(rec.texto_reconocido);
-      box.querySelector('.solve').onclick = () => openAssistant(`Resolvé esto: ${rec.texto_reconocido}`);
-    }
-
-    function showImageContextMenu(imageState, x, y) {
-      imageContextMenu.innerHTML = '';
-      const items = [
-        ['Mover', () => setActiveImage(imageState)],
-        ['✂️ Recortar', () => startCropMode(imageState)],
-        ['🔍 Reconocer texto/ecuaciones', () => recognizeImage(imageState)],
-        ['🗑️ Eliminar', () => removeFloatingImage(imageState)]
-      ];
-      items.forEach(([label, action]) => {
-        const button = document.createElement('button');
-        button.textContent = label;
-        button.onclick = () => { action(); hideImageContextMenu(); };
-        imageContextMenu.appendChild(button);
-      });
-      const wrapRect = wrap.getBoundingClientRect();
-      imageContextMenu.style.left = `${x - wrapRect.left}px`;
-      imageContextMenu.style.top = `${y - wrapRect.top}px`;
-      imageContextMenu.style.display = 'block';
-    }
-
-    function hideImageContextMenu() { imageContextMenu.style.display = 'none'; }
-
-    function startDragImage(imageState, event) {
-      if (event.button !== 0) return;
-      event.preventDefault();
-      setActiveImage(imageState);
-      hideImageContextMenu();
-      const wrapRect = wrap.getBoundingClientRect();
-      const boxRect = imageState.container.getBoundingClientRect();
-      const offsetX = event.clientX - boxRect.left;
-      const offsetY = event.clientY - boxRect.top;
-
-      const onMove = (moveEvent) => {
-        const left = clamp(moveEvent.clientX - wrapRect.left - offsetX, 0, wrap.clientWidth - imageState.container.offsetWidth);
-        const top = clamp(moveEvent.clientY - wrapRect.top - offsetY, 0, wrap.clientHeight - imageState.container.offsetHeight);
-        imageState.container.style.left = `${left}px`;
-        imageState.container.style.top = `${top}px`;
-      };
-      const onUp = () => {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-      };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    }
-
-    function startCropMode(imageState) {
-      setActiveImage(imageState);
-      imageState.cropping = true;
-      showToast('Arrastrá sobre la imagen para recortar ✂️');
-    }
-
-    function attachCropHandlers(imageState) {
-      let start = null;
-      imageState.img.addEventListener('mousedown', (e) => {
-        if (!imageState.cropping) return;
-        e.preventDefault();
-        const rect = imageState.img.getBoundingClientRect();
-        start = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        imageState.cropOverlay.style.display = 'block';
-        imageState.cropOverlay.style.left = `${start.x}px`;
-        imageState.cropOverlay.style.top = `${start.y}px`;
-        imageState.cropOverlay.style.width = '0px';
-        imageState.cropOverlay.style.height = '0px';
-
-        const onMove = (moveEvent) => {
-          const cx = clamp(moveEvent.clientX - rect.left, 0, rect.width);
-          const cy = clamp(moveEvent.clientY - rect.top, 0, rect.height);
-          const x = Math.min(start.x, cx);
-          const y = Math.min(start.y, cy);
-          const w = Math.abs(cx - start.x);
-          const h = Math.abs(cy - start.y);
-          imageState.cropOverlay.style.left = `${x}px`;
-          imageState.cropOverlay.style.top = `${y}px`;
-          imageState.cropOverlay.style.width = `${w}px`;
-          imageState.cropOverlay.style.height = `${h}px`;
-          imageState.cropRect = { x, y, w, h };
-        };
-
-        const onUp = () => {
-          imageState.cropping = false;
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup', onUp);
-          if (!imageState.cropRect || imageState.cropRect.w < 6 || imageState.cropRect.h < 6) {
-            imageState.cropRect = null;
-            imageState.cropOverlay.style.display = 'none';
-            showToast('Recorte cancelado');
-            return;
-          }
-          showToast('Recorte listo ✅');
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-      });
-    }
-
-    async function recognizeImage(imageState) {
-      try {
-        showToast('Reconociendo imagen con Groq Vision... 🔍');
-        const selectedDataUrl = getImageSelectionDataUrl(imageState);
-        const payload = {
-          model: GROQ_VISION_MODEL,
-          max_tokens: 1200,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: GROQ_VISION_PROMPT },
-                {
-                  type: 'image_url',
-                  image_url: { url: selectedDataUrl }
-                }
-              ]
-            }
-          ]
-        };
-        const res = await fetch(GROQ_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${GROQ_KEY}`
-          },
-          body: JSON.stringify(payload)
-        });
-        if (!res.ok) {
-          const errorMessage = await res.text();
-          throw new Error(`Groq Vision ${res.status}: ${errorMessage || res.statusText}`);
-        }
-        const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content?.trim();
-        if (!content) throw new Error('Sin contenido de respuesta');
-        const rec = createRecognitionRecord(content);
-        annotations.push(rec);
-        const imageTop = parseFloat(imageState.container.style.top || '0');
-        const imageLeft = parseFloat(imageState.container.style.left || '0');
-        addRecognitionBlock(rec, {
-          left: imageLeft,
-          top: imageTop + imageState.container.offsetHeight + 10
-        });
-        refreshNotes();
-        showToast('✅ Imagen reconocida');
-      } catch (err) {
-        console.error('Error de reconocimiento de imagen:', err);
-        showToast('No se pudo reconocer la imagen');
-      }
-    }
-
-    function removeFloatingImage(imageState) {
-      const index = floatingImages.indexOf(imageState);
-      if (index >= 0) floatingImages.splice(index, 1);
-      imageState.container.remove();
-      if (activeImageState === imageState) activeImageState = null;
-      hideImageContextMenu();
-    }
-
-    function createFloatingImage(dataUrl, pos = {}) {
-      const container = document.createElement('div');
-      container.className = 'floating-image';
-      container.draggable = false;
-      const toolbar = document.createElement('div');
-      toolbar.className = 'image-toolbar';
-      toolbar.innerHTML = '<button class="btn crop-btn">✂️ Recortar</button><button class="btn recognize-btn">🔍 Reconocer</button><button class="btn delete-btn">🗑️ Eliminar</button>';
-      const imageWrap = document.createElement('div');
-      imageWrap.style.position = 'relative';
-      const img = document.createElement('img');
-      img.src = dataUrl;
-      img.draggable = false;
-      const cropOverlay = document.createElement('div');
-      cropOverlay.className = 'crop-overlay';
-      imageWrap.appendChild(img);
-      imageWrap.appendChild(cropOverlay);
-      container.appendChild(toolbar);
-      container.appendChild(imageWrap);
-      wrap.appendChild(container);
-
-      const imageState = { container, toolbar, img, cropOverlay, dataUrl, cropRect: null, cropping: false };
-      floatingImages.push(imageState);
-      setActiveImage(imageState);
-
-      img.onload = () => {
-        const maxWidth = Math.max(220, Math.floor(wrap.clientWidth * 0.45));
-        const finalWidth = Math.min(maxWidth, img.naturalWidth || maxWidth);
-        container.style.width = `${finalWidth}px`;
-        container.style.left = `${clamp(pos.x ?? 120, 0, Math.max(0, wrap.clientWidth - finalWidth))}px`;
-        container.style.top = `${clamp(pos.y ?? 120, 0, Math.max(0, wrap.clientHeight - container.offsetHeight))}px`;
-      };
-
-      toolbar.addEventListener('mousedown', (e) => startDragImage(imageState, e));
-      imageWrap.addEventListener('mousedown', (e) => {
-        if (imageState.cropping) return;
-        startDragImage(imageState, e);
-      });
-      container.addEventListener('dragstart', (e) => e.preventDefault());
-      toolbar.querySelector('.crop-btn').onclick = () => startCropMode(imageState);
-      toolbar.querySelector('.recognize-btn').onclick = () => recognizeImage(imageState);
-      toolbar.querySelector('.delete-btn').onclick = () => removeFloatingImage(imageState);
-      container.addEventListener('mousedown', () => setActiveImage(imageState));
-      container.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        setActiveImage(imageState);
-        showImageContextMenu(imageState, e.clientX, e.clientY);
-      });
-
-      attachCropHandlers(imageState);
-      return imageState;
-    }
-
-    async function fileToDataUrl(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
-    }
-
-    async function handleImageFile(file, pos) {
-      if (!file || !file.type.startsWith('image/')) return;
-      const dataUrl = await fileToDataUrl(file);
-      createFloatingImage(dataUrl, pos);
-    }
-
-    const symbolKeys = ['∫','∑','√','∞','π','θ','α','β','Δ','≤','≥','≠','±','×','÷','²','³','xⁿ','d/dx','lim','log','ln','sin','cos','tan'];
     function resizeCanvas() {
       const dpr = window.devicePixelRatio || 1;
-      const r = wrap.getBoundingClientRect();
-      canvas.width = r.width * dpr;
-      canvas.height = r.height * dpr;
-      canvas.style.width = r.width + 'px';
-      canvas.style.height = r.height + 'px';
+      const w = sheet.offsetWidth;
+      const h = sheet.offsetHeight;
+      canvas.width  = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width  = w + 'px';
+      canvas.style.height = h + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       redrawAll();
     }
 
-    function showToast(message) {
-      const t = document.createElement('div');
-      t.className = 'toast';
-      t.textContent = message;
-      toasts.appendChild(t);
-      setTimeout(() => t.remove(), 2500);
+    /* ============================================================
+       POINTER EVENTS
+       drawLayer intercepts pointer only when tool is pencil/highlight/eraser
+    ============================================================ */
+    function updateDrawLayerPointerEvents() {
+      const active = ['pencil','highlight','eraser'].includes(currentTool);
+      drawLayer.style.pointerEvents = active ? 'auto' : 'none';
     }
 
     function getPos(e) {
       const rect = canvas.getBoundingClientRect();
-      if (e.touches?.[0]) return {x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top, t: Date.now()};
-      return {x: e.clientX - rect.left, y: e.clientY - rect.top, t: Date.now()};
-    }
-
-    function pushUndo() {
-      undoStack.push(JSON.parse(JSON.stringify(strokes)));
-      if (undoStack.length > 80) undoStack.shift();
+      const src  = e.touches ? e.touches[0] : e;
+      return { x: src.clientX - rect.left, y: src.clientY - rect.top, t: Date.now() };
     }
 
     function startDraw(e) {
-      if (currentTool !== 'pencil' && currentTool !== 'highlight' && currentTool !== 'eraser') return;
-      clearAutoRecognizeTimer();
+      if (!['pencil','highlight','eraser'].includes(currentTool)) return;
+      clearAutoTimer();
       drawing = true;
       currentStroke = [getPos(e)];
       e.preventDefault();
@@ -674,495 +690,896 @@
       if (!drawing) return;
       const p = getPos(e);
       currentStroke.push(p);
-      drawStrokePreview(currentStroke);
+      // live preview
+      redrawAll();
+      drawStrokeRaw({ points: currentStroke, color: currentColor, size: currentSize, tool: currentTool, alpha: currentTool === 'highlight' ? 0.3 : 1, corrected: null });
       e.preventDefault();
     }
 
     function endDraw() {
       if (!drawing) return;
       drawing = false;
-      if (currentStroke.length < 2) return;
+      if (currentStroke.length < 2) { currentStroke = []; return; }
       pushUndo();
       redoStack = [];
+
       const stroke = {
         points: [...currentStroke],
-        color: currentColor,
-        size: currentSize,
-        tool: currentTool,
-        alpha: currentTool === 'highlight' ? 0.3 : 1.0,
+        color:  currentColor,
+        size:   currentSize,
+        tool:   currentTool,
+        alpha:  currentTool === 'highlight' ? 0.3 : 1,
         corrected: null
       };
-      if (stroke.tool !== 'eraser') {
-        stroke.corrected = classifyShape(stroke.points);
+
+      // Only correct lines — NOT closed shapes (letters/numbers would break)
+      if (stroke.tool !== 'eraser' && isAlmostStraightLine(stroke.points)) {
+        stroke.corrected = 'line';
+        showToast('📏 Línea corregida a recta');
       }
+
       strokes.push(stroke);
-      if (stroke.corrected === 'line') showToast('📏 Línea corregida a recta');
-      if (stroke.corrected === 'circle') showToast('⭕ Forma corregida a óvalo');
       redrawAll();
       syncStatus();
       hint.style.display = strokes.length ? 'none' : 'block';
       scheduleAutoRecognition();
+      currentStroke = [];
     }
 
-    function setAutoRecognitionWaiting(waiting) {
-      autoRecognitionStatus.style.display = waiting ? 'inline-flex' : 'none';
-    }
+    canvas.addEventListener('mousedown',  startDraw);
+    canvas.addEventListener('mousemove',  moveDraw);
+    window.addEventListener('mouseup',    endDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove',  moveDraw,  { passive: false });
+    window.addEventListener('touchend',   endDraw);
 
-    function hasPendingInkStrokes() {
-      return strokes.slice(recognizedStrokeCount).some(stroke => stroke.tool !== 'eraser' && stroke.points.length > 1);
-    }
-
-    function clearAutoRecognizeTimer() {
-      if (autoRecognizeTimer) {
-        clearTimeout(autoRecognizeTimer);
-        autoRecognizeTimer = null;
-      }
-      setAutoRecognitionWaiting(false);
-    }
-
-    function scheduleAutoRecognition() {
-      clearAutoRecognizeTimer();
-      if (!hasPendingInkStrokes()) return;
-      setAutoRecognitionWaiting(true);
-      autoRecognizeTimer = setTimeout(() => {
-        triggerAutoRecognition();
-      }, AUTO_RECOGNIZE_DELAY_MS);
-    }
-
-    async function triggerAutoRecognition() {
-      autoRecognizeTimer = null;
-      setAutoRecognitionWaiting(false);
-      if (autoRecognizeInFlight || !hasPendingInkStrokes()) return;
-      autoRecognizeInFlight = true;
-      let recognitionSucceeded = false;
-      try {
-        recognitionSucceeded = !!(await recognizeDrawing({ onlyNew: true }));
-      } finally {
-        autoRecognizeInFlight = false;
-      }
-      if (recognitionSucceeded && hasPendingInkStrokes()) scheduleAutoRecognition();
-    }
-
-    function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-    function pathLength(points) {
-      let len = 0;
-      for (let i = 1; i < points.length; i++) len += distance(points[i - 1], points[i]);
-      return len;
-    }
-
-    function isAlmostStraightLine(points) {
-      if (points.length < 4) return false;
-      const start = points[0], end = points[points.length - 1];
-      const len = distance(start, end);
-      if (len < 20) return false;
-      const A = end.y - start.y;
-      const B = start.x - end.x;
-      const C = end.x * start.y - start.x * end.y;
+    /* ============================================================
+       STROKE CORRECTION — lines only, never closed shapes
+    ============================================================ */
+    function isAlmostStraightLine(pts) {
+      if (pts.length < 5) return false;
+      const s = pts[0], e = pts[pts.length - 1];
+      const len = Math.hypot(e.x - s.x, e.y - s.y);
+      if (len < 30) return false;  // too short to correct
+      const A = e.y - s.y, B = s.x - e.x, C = e.x * s.y - s.x * e.y;
       let maxDev = 0;
-      for (const p of points) {
+      for (const p of pts) {
         const dev = Math.abs(A * p.x + B * p.y + C) / Math.hypot(A, B);
-        maxDev = Math.max(maxDev, dev);
+        if (dev > maxDev) maxDev = dev;
       }
-      return maxDev < len * 0.18;
+      // strict threshold — only correct if VERY straight (10% instead of 18%)
+      return maxDev < len * 0.10;
     }
 
-    function classifyShape(points) {
-      if (isAlmostStraightLine(points)) return 'line';
-      const perimeter = pathLength(points);
-      const closeDistance = distance(points[0], points[points.length - 1]);
-      if (perimeter > 40 && closeDistance < perimeter * 0.25) return 'circle';
-      return null;
-    }
-
-    function drawStroke(stroke) {
+    /* ============================================================
+       DRAWING
+    ============================================================ */
+    function drawStrokeRaw(stroke) {
       if (stroke.tool === 'eraser') {
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
-        ctx.lineWidth = 20;
-        ctx.lineCap = 'round';
+        ctx.lineWidth = 22; ctx.lineCap = 'round';
         ctx.beginPath();
         stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
         ctx.stroke();
         ctx.restore();
         return;
       }
-      if (stroke.corrected === 'line') return drawCleanLine(stroke);
-      if (stroke.corrected === 'circle') return drawCleanCircle(stroke);
+      if (stroke.corrected === 'line') {
+        const f = stroke.points[0], l = stroke.points[stroke.points.length - 1];
+        ctx.save();
+        ctx.globalAlpha = stroke.alpha;
+        ctx.strokeStyle = stroke.color;
+        ctx.lineWidth   = stroke.tool === 'highlight' ? 14 : stroke.size;
+        ctx.lineCap     = 'round';
+        ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(l.x, l.y);
+        ctx.stroke(); ctx.restore();
+        return;
+      }
       ctx.save();
       ctx.globalAlpha = stroke.alpha;
       ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.tool === 'highlight' ? 14 : stroke.size;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineWidth   = stroke.tool === 'highlight' ? 14 : stroke.size;
+      ctx.lineCap     = 'round'; ctx.lineJoin = 'round';
       ctx.beginPath();
       stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
       ctx.stroke();
       ctx.restore();
     }
 
-    function drawCleanLine(stroke) {
-      const first = stroke.points[0], last = stroke.points[stroke.points.length - 1];
-      ctx.save();
-      ctx.globalAlpha = stroke.alpha;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.tool === 'highlight' ? 14 : stroke.size;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(first.x, first.y);
-      ctx.lineTo(last.x, last.y);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    function drawCleanCircle(stroke) {
-      const xs = stroke.points.map(p => p.x), ys = stroke.points.map(p => p.y);
-      const minX = Math.min(...xs), maxX = Math.max(...xs);
-      const minY = Math.min(...ys), maxY = Math.max(...ys);
-      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-      const rx = Math.max((maxX - minX) / 2, 2), ry = Math.max((maxY - minY) / 2, 2);
-      ctx.save();
-      ctx.globalAlpha = stroke.alpha;
-      ctx.strokeStyle = stroke.color;
-      ctx.lineWidth = stroke.tool === 'highlight' ? 14 : stroke.size;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    function drawStrokePreview(points) {
-      redrawAll();
-      drawStroke({points, color: currentColor, size: currentSize, tool: currentTool, alpha: currentTool === 'highlight' ? 0.3 : 1.0, corrected: null});
-    }
-
     function redrawAll() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      strokes.forEach(drawStroke);
+      strokes.forEach(drawStrokeRaw);
     }
 
-    function applyCanvasCursor() {
-      canvas.classList.remove('cursor-circle-black','cursor-circle-violet','cursor-circle-red','cursor-circle-blue','cursor-circle-green','cursor-circle-orange','cursor-eraser');
-      if (currentTool === 'eraser') {
-        canvas.classList.add('cursor-eraser');
-        return;
-      }
-      if (!['pencil', 'highlight'].includes(currentTool)) return;
-      const map = {
-        '#1e1b4b': 'cursor-circle-black',
-        '#7c3aed': 'cursor-circle-violet',
-        '#dc2626': 'cursor-circle-red',
-        '#2563eb': 'cursor-circle-blue',
-        '#16a34a': 'cursor-circle-green',
-        '#ea580c': 'cursor-circle-orange'
-      };
-      canvas.classList.add(map[currentColor] || 'cursor-circle-black');
+    /* ============================================================
+       AUTO RECOGNITION
+    ============================================================ */
+    function clearAutoTimer() {
+      if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+      document.getElementById('autoRecognitionStatus').style.display = 'none';
     }
 
-    function syncStatus() {
-      document.getElementById('statusMode').textContent = `Modo: ${currentTool}`;
-      document.getElementById('statusColor').textContent = `Color: ${currentColor}`;
-      document.getElementById('statusCount').textContent = `Trazos: ${strokes.length}`;
+    function scheduleAutoRecognition() {
+      clearAutoTimer();
+      const pending = strokes.slice(recognizedStrokeCount).some(s => s.tool !== 'eraser' && s.points.length > 1);
+      if (!pending) return;
+      document.getElementById('autoRecognitionStatus').style.display = 'inline-flex';
+      autoTimer = setTimeout(async () => {
+        autoTimer = null;
+        document.getElementById('autoRecognitionStatus').style.display = 'none';
+        if (autoInFlight) return;
+        autoInFlight = true;
+        try { await recognizeDrawing({ onlyNew: true }); } finally { autoInFlight = false; }
+      }, AUTO_DELAY);
     }
 
-    function collectInkStrokes(fromIndex = 0) {
-      const sourceStrokes = strokes.slice(fromIndex);
-      const referenceTime = sourceStrokes[0]?.points?.[0]?.t || Date.now();
-      return sourceStrokes
-        .filter(stroke => stroke.tool !== 'eraser' && stroke.points.length > 1)
-        .map(stroke => ({
-          x: stroke.points.map(point => Number(point.x.toFixed(2))),
-          y: stroke.points.map(point => Number(point.y.toFixed(2))),
-          t: stroke.points.map(point => Math.max(0, Math.round((point.t || Date.now()) - referenceTime)))
-        }));
+    /* ============================================================
+       MYSCRIPT RECOGNITION
+    ============================================================ */
+    async function signBody(body) {
+      const enc  = new TextEncoder();
+      const key  = await crypto.subtle.importKey('raw', enc.encode(MYSCRIPT_HMAC_SECRET), { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+      const sig  = await crypto.subtle.sign('HMAC', key, enc.encode(body));
+      return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('');
     }
 
-    async function signBodyWithHmac(body) {
-      const encoder = new TextEncoder();
-      const keyData = encoder.encode(MYSCRIPT_HMAC_SECRET);
-      const bodyData = encoder.encode(body);
-      const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
-      const signature = await crypto.subtle.sign('HMAC', cryptoKey, bodyData);
-      return Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+    function collectStrokes(fromIndex = 0) {
+      const src = strokes.slice(fromIndex).filter(s => s.tool !== 'eraser' && s.points.length > 1);
+      const t0  = src[0]?.points[0]?.t || Date.now();
+      return src.map(s => ({
+        x: s.points.map(p => +p.x.toFixed(1)),
+        y: s.points.map(p => +p.y.toFixed(1)),
+        t: s.points.map(p => Math.max(0, Math.round((p.t || Date.now()) - t0)))
+      }));
     }
 
-    function extractMyScriptResult(payload, contentType) {
-      const asText = (v) => typeof v === 'string' ? v.trim() : '';
-      const values = [
+    function extractResult(payload, contentType) {
+      const candidates = [
         payload?.result?.results?.[0]?.text,
         payload?.result?.results?.[0]?.label,
-        payload?.result?.results?.[0]?.value,
         payload?.results?.[0]?.text,
-        payload?.results?.[0]?.label,
-        payload?.results?.[0]?.value,
         payload?.text,
-        payload?.label,
-        payload?.value,
         payload?.exports?.['application/x-latex'],
         payload?.exports?.['text/plain']
-      ].map(asText).filter(Boolean);
-      const recognizedText = values[0] || '';
-      const latex = asText(payload?.exports?.['application/x-latex']) || (contentType === 'Math' ? recognizedText : 'N/A');
-      if (!recognizedText && !latex) return null;
+      ].map(v => (typeof v === 'string' ? v.trim() : '')).filter(Boolean);
+      const recognized = candidates[0] || '';
+      const latex = (typeof payload?.exports?.['application/x-latex'] === 'string' ? payload.exports['application/x-latex'].trim() : '') || (contentType === 'Math' ? recognized : '');
+      if (!recognized && !latex) return null;
       return {
-        texto_reconocido: recognizedText || 'Sin resultado de texto.',
+        texto_reconocido: recognized || '(sin texto)',
         tipo: contentType === 'Math' ? 'math' : 'text',
-        resultado: contentType === 'Math' ? 'Reconocimiento matemático real (MyScript)' : 'Reconocimiento de texto real (MyScript)',
-        latex,
+        resultado: `Reconocimiento ${contentType === 'Math' ? 'matemático' : 'de texto'} (MyScript)`,
+        latex: latex || 'N/A',
         confianza: 'cloud'
       };
     }
 
-    async function recognizeDrawing(options = {}) {
-      const { onlyNew = false } = options;
-      const endpoint = resolveMyScriptEndpoint();
-      if (!endpoint) return null;
-      const fromIndex = onlyNew ? recognizedStrokeCount : 0;
-      const inkStrokes = collectInkStrokes(fromIndex);
-      if (!inkStrokes.length) {
-        if (!onlyNew) showToast('No hay trazos para reconocer ✍️');
-        return null;
-      }
+    async function recognizeDrawing(opts = {}) {
+      const { onlyNew = false } = opts;
+      const fromIndex   = onlyNew ? recognizedStrokeCount : 0;
+      const inkStrokes  = collectStrokes(fromIndex);
+      if (!inkStrokes.length) { if (!onlyNew) showToast('No hay trazos para reconocer ✍️'); return null; }
 
       showToast('Reconociendo con MyScript... ✨');
       const contentType = isMathMode ? 'Math' : 'Text';
-      const dpi = window.devicePixelRatio ? 96 * window.devicePixelRatio : 96;
-      const bodyPayload = {
-        xDPI: dpi,
-        yDPI: dpi,
-        contentType,
-        configuration: {
-          lang: 'es_ES',
-          export: {
-            jiix: { strokes: false },
-            tex: {}
-          }
-        },
+      const dpi = Math.round(96 * (window.devicePixelRatio || 1));
+      const bodyObj = {
+        xDPI: dpi, yDPI: dpi, contentType,
+        configuration: { lang: 'es_ES', export: { jiix: { strokes: false }, tex: {} } },
         strokeGroups: [{ strokes: inkStrokes }]
       };
+      const body = JSON.stringify(bodyObj);
 
-      const body = JSON.stringify(bodyPayload);
       try {
-        const signature = await signBodyWithHmac(body);
-        const res = await fetch(endpoint, {
+        const sig = await signBody(body);
+        const res = await fetch(MYSCRIPT_ENDPOINT, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            applicationKey: MYSCRIPT_APPLICATION_KEY,
-            hmacKey: signature
-          },
+          headers: { 'Content-Type': 'application/json', applicationKey: MYSCRIPT_APP_KEY, hmacKey: sig },
           body
         });
-
-        if (!res.ok) {
-          const message = await res.text();
-          throw new Error(`MyScript ${res.status}: ${message || res.statusText}`);
-        }
-
+        if (!res.ok) throw new Error(`MyScript ${res.status}: ${await res.text()}`);
         const payload = await res.json();
-        const found = extractMyScriptResult(payload, contentType);
-        if (!found) {
-          showToast('No se pudo reconocer, seguí escribiendo...');
-          return null;
-        }
+        const found   = extractResult(payload, contentType);
+        if (!found) { showToast('No se pudo reconocer, seguí escribiendo...'); return null; }
         annotations.push(found);
-        addRecognitionBlock(found);
+        placeRecognitionBlock(found);
         refreshNotes();
         showToast('✅ Reconocido');
         recognizedStrokeCount = strokes.length;
         return found;
       } catch (err) {
-        console.warn('Reconocimiento MyScript no disponible:', err.message);
+        console.warn('MyScript:', err.message);
         showToast('No se pudo reconocer, seguí escribiendo...');
         return null;
       }
     }
 
-    function refreshNotes() {
-      notesPanel.innerHTML = '<h4>📋 Anotaciones</h4>';
-      annotations.forEach(a => {
-        const el = document.createElement('div');
-        el.className = 'notes-item';
-        el.innerHTML = `<strong>${a.tipo}</strong><div>${a.texto_reconocido}</div><small>${a.resultado}</small>`;
-        el.onclick = () => openAssistant(a.texto_reconocido);
-        notesPanel.appendChild(el);
+    function placeRecognitionBlock(rec, pos) {
+      const box = document.createElement('div');
+      box.className = 'recognition';
+      // position: stack them or use provided pos
+      const count = sheet.querySelectorAll('.recognition').length;
+      box.style.right = '20px';
+      box.style.top   = (120 + count * 160) + 'px';
+      if (pos) { box.style.right = 'auto'; box.style.left = pos.left + 'px'; box.style.top = pos.top + 'px'; }
+
+      const badgeLabel = rec.tipo === 'math' ? '∑ Matemática' : rec.tipo === 'formula' ? '📐 Fórmula' : '📝 Texto';
+      box.innerHTML = `
+        <div class="rec-header">
+          <span class="badge">${badgeLabel}</span>
+          <button class="rec-close" title="Cerrar">✕</button>
+        </div>
+        <div class="math-content">${rec.texto_reconocido}</div>
+        <div class="math-result">${rec.resultado}</div>
+        <div class="latex-line">LaTeX: ${rec.latex}</div>
+        <div class="rec-actions">
+          <button class="btn copy-btn">📋 Copiar LaTeX</button>
+          <button class="btn explain-btn">🤖 Explicar</button>
+          <button class="btn solve-btn">⚡ Resolver</button>
+        </div>`;
+      sheet.appendChild(box);
+      box.querySelector('.rec-close').onclick  = () => box.remove();
+      box.querySelector('.copy-btn').onclick   = () => { navigator.clipboard.writeText(rec.latex); showToast('LaTeX copiado 📋'); };
+      box.querySelector('.explain-btn').onclick = () => openAssistant(`Explicame: ${rec.texto_reconocido}`);
+      box.querySelector('.solve-btn').onclick   = () => openAssistant(`Resolvé esto: ${rec.texto_reconocido}`);
+    }
+
+    /* ============================================================
+       GROQ ASSISTANT
+    ============================================================ */
+    async function queryAssistant() {
+      const input    = document.getElementById('assistantInput');
+      const response = document.getElementById('assistantResponse');
+      const q = input.value.trim();
+      if (!q) return;
+      response.textContent = 'Pensando...';
+      const SYSTEM = `Sos un asistente de matemáticas integrado en una app de apuntes estilo NEBO/OneNote.
+REGLAS:
+- Respuestas cortas y directas (máx 3-4 líneas)
+- Usá notación matemática: f'(x), x², ∫, Δ, etc.
+- Si hay ecuación, mostrá el paso a paso brevemente
+- Respondé en español rioplatense (vos, etc.)
+- Sin markdown, solo texto plano con símbolos matemáticos
+- Contexto: apuntes de ${document.getElementById('pageTitle').value}`;
+      try {
+        const res  = await fetch(GROQ_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+          body: JSON.stringify({ model: GROQ_MODEL, max_tokens: 1000, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: q }] })
+        });
+        const data = await res.json();
+        response.textContent = data?.choices?.[0]?.message?.content || 'Sin respuesta.';
+      } catch (err) { response.textContent = `Error: ${err.message}`; }
+    }
+
+    function openAssistant(text = '') {
+      const p = document.getElementById('assistantPanel');
+      p.style.display = 'block';
+      const inp = document.getElementById('assistantInput');
+      if (text) { inp.value = text; queryAssistant(); }
+      else inp.focus();
+    }
+
+    /* ============================================================
+       GROQ VISION — IMAGE RECOGNITION
+    ============================================================ */
+    async function recognizeImage(imageState) {
+      showToast('Reconociendo imagen con Groq Vision... 🔍');
+      try {
+        const dataUrl = imageState.cropRect ? getCroppedDataUrl(imageState) : imageState.dataUrl;
+        const res = await fetch(GROQ_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+          body: JSON.stringify({
+            model: GROQ_VISION_MODEL,
+            max_tokens: 1200,
+            messages: [{ role: 'user', content: [
+              { type: 'text', text: GROQ_VISION_PROMPT },
+              { type: 'image_url', image_url: { url: dataUrl } }
+            ]}]
+          })
+        });
+        if (!res.ok) throw new Error(`Groq ${res.status}`);
+        const data    = await res.json();
+        const content = data?.choices?.[0]?.message?.content?.trim();
+        if (!content) throw new Error('Sin contenido');
+        const latexLines = content.split('\n').filter(l => /\\|\$|\^|_/.test(l));
+        const rec = {
+          texto_reconocido: content,
+          tipo: 'math',
+          resultado: 'Reconocimiento de imagen (Groq Vision)',
+          latex: latexLines.length ? latexLines.join(' | ') : 'Ver texto arriba',
+          confianza: 'cloud'
+        };
+        annotations.push(rec);
+        const r = imageState.container.getBoundingClientRect();
+        const s = sheet.getBoundingClientRect();
+        placeRecognitionBlock(rec, { left: r.left - s.left, top: r.bottom - s.top + 10 });
+        refreshNotes();
+        showToast('✅ Imagen reconocida');
+      } catch (err) { showToast('No se pudo reconocer la imagen'); console.error(err); }
+    }
+
+    function getCroppedDataUrl(imageState) {
+      const img = imageState.img;
+      const { x, y, w, h } = imageState.cropRect;
+      const scaleX = img.naturalWidth  / img.clientWidth;
+      const scaleY = img.naturalHeight / img.clientHeight;
+      const tmp = document.createElement('canvas');
+      tmp.width = Math.round(w * scaleX); tmp.height = Math.round(h * scaleY);
+      tmp.getContext('2d').drawImage(img, Math.round(x*scaleX), Math.round(y*scaleY), tmp.width, tmp.height, 0, 0, tmp.width, tmp.height);
+      return tmp.toDataURL('image/png');
+    }
+
+    /* ============================================================
+       FLOATING IMAGES
+    ============================================================ */
+    const floatingImages = [];
+    let activeImg = null;
+    const ctxMenu = document.getElementById('imageContextMenu');
+
+    function clamp(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+
+    function setActive(state) {
+      if (activeImg?.container) activeImg.container.classList.remove('active');
+      activeImg = state;
+      if (state?.container) state.container.classList.add('active');
+    }
+
+    function createFloatingImage(dataUrl, pos = {}) {
+      const container = document.createElement('div');
+      container.className = 'floating-image';
+
+      const toolbar = document.createElement('div');
+      toolbar.className = 'image-toolbar';
+      toolbar.innerHTML = '<button class="btn crop-btn">✂️ Recortar</button><button class="btn recog-btn">🔍 Reconocer</button><button class="btn del-btn">🗑️</button>';
+
+      const imgWrap = document.createElement('div');
+      imgWrap.style.position = 'relative';
+      const img = new Image();
+      img.draggable = false;
+      const cropOverlay = document.createElement('div');
+      cropOverlay.className = 'crop-overlay';
+      imgWrap.appendChild(img); imgWrap.appendChild(cropOverlay);
+      container.appendChild(toolbar); container.appendChild(imgWrap);
+      sheet.appendChild(container);
+
+      const state = { container, toolbar, img, imgWrap, cropOverlay, dataUrl, cropRect: null, cropping: false };
+      floatingImages.push(state);
+      setActive(state);
+
+      img.onload = () => {
+        const maxW = Math.floor(sheet.clientWidth * 0.5);
+        const w    = Math.min(maxW, img.naturalWidth || 400);
+        container.style.width = w + 'px';
+        container.style.left  = clamp(pos.x ?? 100, 0, sheet.clientWidth  - w)  + 'px';
+        container.style.top   = clamp(pos.y ?? 100, 0, sheet.clientHeight - 200) + 'px';
+      };
+      img.src = dataUrl;
+
+      // drag via toolbar
+      toolbar.addEventListener('mousedown', e => { if (e.button !== 0) return; startImgDrag(state, e); });
+      // drag via image when not cropping
+      imgWrap.addEventListener('mousedown', e => { if (state.cropping) return; if (e.button !== 0) return; startImgDrag(state, e); });
+      container.addEventListener('mousedown', () => setActive(state));
+      container.addEventListener('contextmenu', e => { e.preventDefault(); setActive(state); showCtxMenu(state, e.clientX, e.clientY); });
+
+      toolbar.querySelector('.crop-btn').onclick = () => startCrop(state);
+      toolbar.querySelector('.recog-btn').onclick = () => recognizeImage(state);
+      toolbar.querySelector('.del-btn').onclick   = () => removeImg(state);
+
+      attachCropHandlers(state);
+      return state;
+    }
+
+    function startImgDrag(state, e) {
+      e.preventDefault(); e.stopPropagation();
+      const sRect = sheet.getBoundingClientRect();
+      const cRect = state.container.getBoundingClientRect();
+      const ox = e.clientX - cRect.left, oy = e.clientY - cRect.top;
+      const onMove = mv => {
+        const l = clamp(mv.clientX - sRect.left - ox, 0, sheet.clientWidth  - state.container.offsetWidth);
+        const t = clamp(mv.clientY - sRect.top  - oy, 0, sheet.clientHeight - state.container.offsetHeight);
+        state.container.style.left = l + 'px';
+        state.container.style.top  = t + 'px';
+      };
+      const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    }
+
+    function startCrop(state) { state.cropping = true; setActive(state); showToast('Arrastrá sobre la imagen para recortar ✂️'); }
+
+    function attachCropHandlers(state) {
+      let start = null;
+      state.img.addEventListener('mousedown', e => {
+        if (!state.cropping) return;
+        e.preventDefault(); e.stopPropagation();
+        const r = state.img.getBoundingClientRect();
+        start = { x: e.clientX - r.left, y: e.clientY - r.top };
+        state.cropOverlay.style.cssText = `display:block;left:${start.x}px;top:${start.y}px;width:0;height:0`;
+        const onMove = mv => {
+          const cx = clamp(mv.clientX - r.left, 0, r.width), cy = clamp(mv.clientY - r.top, 0, r.height);
+          const x = Math.min(start.x, cx), y = Math.min(start.y, cy);
+          const w = Math.abs(cx - start.x), h = Math.abs(cy - start.y);
+          state.cropOverlay.style.left = x+'px'; state.cropOverlay.style.top = y+'px';
+          state.cropOverlay.style.width = w+'px'; state.cropOverlay.style.height = h+'px';
+          state.cropRect = { x, y, w, h };
+        };
+        const onUp = () => {
+          state.cropping = false;
+          window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp);
+          if (!state.cropRect || state.cropRect.w < 6 || state.cropRect.h < 6) {
+            state.cropRect = null; state.cropOverlay.style.display = 'none';
+          } else { showToast('Recorte listo ✅'); }
+        };
+        window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
       });
     }
 
+    function removeImg(state) {
+      state.container.remove();
+      const i = floatingImages.indexOf(state);
+      if (i >= 0) floatingImages.splice(i, 1);
+      if (activeImg === state) activeImg = null;
+      hideCtxMenu();
+    }
+
+    function showCtxMenu(state, x, y) {
+      ctxMenu.innerHTML = '';
+      [['Mover', () => setActive(state)], ['✂️ Recortar', () => startCrop(state)], ['🔍 Reconocer', () => recognizeImage(state)], ['🗑️ Eliminar', () => removeImg(state)]].forEach(([label, fn]) => {
+        const b = document.createElement('button'); b.textContent = label;
+        b.onclick = () => { fn(); hideCtxMenu(); };
+        ctxMenu.appendChild(b);
+      });
+      ctxMenu.style.left = x + 'px'; ctxMenu.style.top = y + 'px'; ctxMenu.style.display = 'block';
+    }
+    function hideCtxMenu() { ctxMenu.style.display = 'none'; }
+
+    async function fileToDataUrl(file) {
+      return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    }
+
+    /* ============================================================
+       NOTES PANEL
+    ============================================================ */
+    function refreshNotes() {
+      const panel = document.getElementById('notesPanel');
+      panel.innerHTML = '<h4>📋 Anotaciones</h4>';
+      annotations.forEach(a => {
+        const el = document.createElement('div');
+        el.className = 'notes-item';
+        el.innerHTML = `<strong>${a.tipo}</strong><div style="margin-top:3px">${a.texto_reconocido.slice(0,80)}${a.texto_reconocido.length>80?'...':''}</div><small style="color:var(--muted)">${a.resultado}</small>`;
+        el.onclick = () => openAssistant(a.texto_reconocido);
+        panel.appendChild(el);
+      });
+    }
+
+    /* ============================================================
+       EXPORT
+    ============================================================ */
     function exportData() {
       const title = document.getElementById('pageTitle').value;
-      const date = document.getElementById('dateLine').textContent;
-      const lines = [`Título: ${title}`, `Fecha: ${date}`, '', 'Anotaciones:'];
-      annotations.forEach((a, i) => lines.push(`${i + 1}. [${a.tipo}] ${a.texto_reconocido}`, `   Resultado: ${a.resultado}`, `   LaTeX: ${a.latex}`));
-      const blob = new Blob([lines.join('\n')], {type: 'text/plain'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${title.replace(/\s+/g, '_')}.txt`;
-      a.click();
+      const lines = [`Título: ${title}`, `Fecha: ${document.getElementById('dateLine').textContent}`, '', 'Anotaciones:'];
+      annotations.forEach((a,i) => lines.push(`${i+1}. [${a.tipo}] ${a.texto_reconocido}`, `   Resultado: ${a.resultado}`, `   LaTeX: ${a.latex}`));
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `${title.replace(/\s+/g,'_')}.txt`; a.click();
       showToast('📤 Exportado');
     }
 
-    async function queryAssistant() {
-      const input = document.getElementById('assistantInput');
-      const response = document.getElementById('assistantResponse');
-      const pregunta = input.value.trim();
-      if (!pregunta) return;
-      response.textContent = 'Pensando...';
-      const pageTitle = document.getElementById('pageTitle').value;
-      const SYSTEM_PROMPT = `Sos un asistente de matemáticas integrado en una app de apuntes estilo NEBO/OneNote.\nEl usuario escribe apuntes de matemáticas a mano y tus respuestas se muestran en su cuaderno.\nREGLAS:\n- Respuestas cortas y directas (máx 3-4 líneas)\n- Usá notación matemática: f'(x), x², ∫, Δ, etc.\n- Si hay ecuación, mostrá el paso a paso brevemente\n- Respondé en español rioplatense (vos, boludo, etc.)\n- Sin markdown, solo texto plano con símbolos matemáticos\n- Contexto: el usuario toma apuntes de ${pageTitle}`;
-
-      try {
-        const res = await fetch(GROQ_ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-          body: JSON.stringify({
-            model: GROQ_MODEL,
-            max_tokens: 1000,
-            messages: [
-              { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: pregunta }
-            ]
-          })
-        });
-        const data = await res.json();
-        response.textContent = data?.choices?.[0]?.message?.content || 'No hubo respuesta del motor.';
-      } catch (err) {
-        response.textContent = `Error consultando IA: ${err.message}`;
-      }
+    /* ============================================================
+       UNDO / REDO
+    ============================================================ */
+    function pushUndo() {
+      undoStack.push(JSON.parse(JSON.stringify(strokes)));
+      if (undoStack.length > 80) undoStack.shift();
     }
-
-    function openAssistant(text='') {
-      const panel = document.getElementById('assistantPanel');
-      panel.style.display = 'block';
-      const input = document.getElementById('assistantInput');
-      if (text) input.value = text;
-      input.focus();
-    }
-
     function undo() {
       if (!undoStack.length) return;
       redoStack.push(JSON.parse(JSON.stringify(strokes)));
       strokes = undoStack.pop();
       recognizedStrokeCount = Math.min(recognizedStrokeCount, strokes.length);
-      redrawAll();
-      syncStatus();
-      hint.style.display = strokes.length ? 'none' : 'block';
+      redrawAll(); syncStatus(); hint.style.display = strokes.length ? 'none' : 'block';
     }
-
     function redo() {
       if (!redoStack.length) return;
       undoStack.push(JSON.parse(JSON.stringify(strokes)));
       strokes = redoStack.pop();
       recognizedStrokeCount = Math.min(recognizedStrokeCount, strokes.length);
-      redrawAll();
-      syncStatus();
-      hint.style.display = strokes.length ? 'none' : 'block';
+      redrawAll(); syncStatus(); hint.style.display = strokes.length ? 'none' : 'block';
     }
 
+    /* ============================================================
+       UI HELPERS
+    ============================================================ */
+    function showToast(msg) {
+      const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+      document.getElementById('toasts').appendChild(t);
+      setTimeout(() => t.remove(), 2800);
+    }
+
+    function syncStatus() {
+      document.getElementById('statusMode').textContent  = `Modo: ${currentTool}`;
+      document.getElementById('statusColor').textContent = `Color: ${currentColor}`;
+      document.getElementById('statusCount').textContent = `Trazos: ${strokes.length}`;
+    }
+
+    function applyCanvasCursor() {
+      canvas.classList.remove('cursor-circle-black','cursor-circle-violet','cursor-circle-red','cursor-circle-blue','cursor-circle-green','cursor-circle-orange','cursor-eraser');
+      if (currentTool === 'eraser') { canvas.classList.add('cursor-eraser'); return; }
+      if (!['pencil','highlight'].includes(currentTool)) return;
+      const map = { '#1e1b4b':'cursor-circle-black','#7c3aed':'cursor-circle-violet','#dc2626':'cursor-circle-red','#2563eb':'cursor-circle-blue','#16a34a':'cursor-circle-green','#ea580c':'cursor-circle-orange' };
+      canvas.classList.add(map[currentColor] || 'cursor-circle-black');
+    }
+
+    /* ============================================================
+       MATH KEYBOARD
+    ============================================================ */
+    const SYMBOLS = ['∫','∑','√','∞','π','θ','α','β','Δ','≤','≥','≠','±','×','÷','²','³','xⁿ','d/dx','lim','log','ln','sin','cos','tan'];
+    const kbd = document.getElementById('mathKeyboard');
+    kbd.innerHTML = SYMBOLS.map(k => `<button class="key">${k}</button>`).join('') + `<button class="key close-red">✕ Cerrar</button>`;
+    kbd.addEventListener('click', e => {
+      if (!e.target.classList.contains('key')) return;
+      if (e.target.classList.contains('close-red')) { kbd.classList.remove('open'); return; }
+      document.getElementById('pageTitle').value += ` ${e.target.textContent}`;
+    });
+
+    /* ============================================================
+       EVENT WIRING
+    ============================================================ */
     document.querySelectorAll('[data-tool]').forEach(btn => btn.onclick = () => {
       document.querySelectorAll('[data-tool]').forEach(x => x.classList.remove('active'));
       btn.classList.add('active');
       currentTool = btn.dataset.tool;
       applyCanvasCursor();
+      updateDrawLayerPointerEvents();
       syncStatus();
     });
+
     document.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => {
       document.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('active'));
-      s.classList.add('active');
-      currentColor = s.dataset.color;
-      applyCanvasCursor();
-      syncStatus();
+      s.classList.add('active'); currentColor = s.dataset.color;
+      applyCanvasCursor(); syncStatus();
     });
+
     document.querySelectorAll('.size-btn').forEach(s => s.onclick = () => {
       document.querySelectorAll('.size-btn').forEach(x => x.classList.remove('active'));
-      s.classList.add('active');
-      currentSize = Number(s.dataset.size);
+      s.classList.add('active'); currentSize = parseFloat(s.dataset.size);
     });
 
-    canvas.addEventListener('mousedown', startDraw);
-    canvas.addEventListener('mousemove', moveDraw);
-    window.addEventListener('mouseup', endDraw);
-    canvas.addEventListener('touchstart', startDraw, { passive: false });
-    canvas.addEventListener('touchmove', moveDraw, { passive: false });
-    window.addEventListener('touchend', endDraw);
+    document.getElementById('recognizeBtn').onclick   = () => recognizeDrawing();
+    document.getElementById('mathModeBtn').onclick    = e => { isMathMode = !isMathMode; e.currentTarget.classList.toggle('active', isMathMode); showToast(isMathMode ? '∑ Modo matemático activado' : '📝 Modo texto activado'); };
+    document.getElementById('undoBtn').onclick        = undo;
+    document.getElementById('redoBtn').onclick        = redo;
+    document.getElementById('clearBtn').onclick       = () => { pushUndo(); strokes = []; redoStack = []; recognizedStrokeCount = 0; clearAutoTimer(); redrawAll(); syncStatus(); hint.style.display = 'block'; };
+    document.getElementById('exportBtn').onclick      = exportData;
+    document.getElementById('kbdToggle').onclick      = () => kbd.classList.toggle('open');
+    document.getElementById('assistantToggle').onclick = () => { const p = document.getElementById('assistantPanel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; };
+    document.getElementById('closeAssistant').onclick  = () => { document.getElementById('assistantPanel').style.display = 'none'; };
+    document.getElementById('askBtn').onclick          = queryAssistant;
+    document.getElementById('notesToggle').onclick     = () => { const p = document.getElementById('notesPanel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; };
 
+    document.addEventListener('mousedown', e => { if (!ctxMenu.contains(e.target)) hideCtxMenu(); });
 
-    wrap.addEventListener('dragover', (e) => {
-      if (Array.from(e.dataTransfer?.types || []).includes('Files')) e.preventDefault();
-    });
-    wrap.addEventListener('drop', async (e) => {
-      if (!e.dataTransfer?.files?.length) return;
+    // Paste image
+    window.addEventListener('paste', async e => {
+      const item = Array.from(e.clipboardData?.items || []).find(i => i.type.startsWith('image/'));
+      if (!item) return;
       e.preventDefault();
-      const wrapRect = wrap.getBoundingClientRect();
+      const file = item.getAsFile();
+      if (!file) return;
+      const url = await fileToDataUrl(file);
+      createFloatingImage(url, { x: 120, y: 120 });
+    });
+
+    // Drag & drop image onto sheet
+    const scroll = document.getElementById('canvasScroll');
+    scroll.addEventListener('dragover', e => { if (Array.from(e.dataTransfer?.types||[]).includes('Files')) e.preventDefault(); });
+    scroll.addEventListener('drop', async e => {
+      if (!e.dataTransfer?.files?.length) return; e.preventDefault();
       const file = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'));
       if (!file) return;
-      await handleImageFile(file, { x: e.clientX - wrapRect.left, y: e.clientY - wrapRect.top });
+      const sRect = sheet.getBoundingClientRect();
+      const url = await fileToDataUrl(file);
+      createFloatingImage(url, { x: e.clientX - sRect.left, y: e.clientY - sRect.top });
     });
 
-    window.addEventListener('paste', async (e) => {
-      const items = Array.from(e.clipboardData?.items || []);
-      const imageItem = items.find(item => item.type.startsWith('image/'));
-      if (!imageItem) return;
-      e.preventDefault();
-      const file = imageItem.getAsFile();
-      if (!file) return;
-      await handleImageFile(file, { x: 120, y: 120 });
-    });
-
-    document.addEventListener('mousedown', (e) => {
-      if (!imageContextMenu.contains(e.target)) hideImageContextMenu();
-    });
-    window.addEventListener('scroll', hideImageContextMenu, true);
-
-    document.getElementById('recognizeBtn').onclick = recognizeDrawing;
-    document.getElementById('mathModeBtn').onclick = (e) => {
-      isMathMode = !isMathMode;
-      e.currentTarget.classList.toggle('active', isMathMode);
-      e.currentTarget.textContent = isMathMode ? '∑ modo matemático' : '📝 modo texto';
-      showToast(isMathMode ? 'Modo matemático activado ∑' : 'Modo texto activado 📝');
-    };
-    document.getElementById('undoBtn').onclick = undo;
-    document.getElementById('redoBtn').onclick = redo;
-    document.getElementById('clearBtn').onclick = () => { pushUndo(); strokes = []; redoStack = []; recognizedStrokeCount = 0; clearAutoRecognizeTimer(); redrawAll(); syncStatus(); hint.style.display = 'block'; };
-    document.getElementById('exportBtn').onclick = exportData;
-    document.getElementById('assistantToggle').onclick = () => {
-      const p = document.getElementById('assistantPanel');
-      p.style.display = p.style.display === 'block' ? 'none' : 'block';
-    };
-    document.getElementById('askBtn').onclick = queryAssistant;
-    document.getElementById('notesToggle').onclick = () => {
-      notesPanel.style.display = notesPanel.style.display === 'block' ? 'none' : 'block';
-    };
-
-    const keyboard = document.getElementById('mathKeyboard');
-    keyboard.innerHTML = symbolKeys.map(k => `<button class='key'>${k}</button>`).join('') + `<button class='key close-red'>✕ Cerrar</button>`;
-    keyboard.addEventListener('click', (e) => {
-      if (!(e.target instanceof HTMLElement)) return;
-      if (!e.target.classList.contains('key')) return;
-      if (e.target.textContent.includes('Cerrar')) return keyboard.style.display = 'none';
-      const title = document.getElementById('pageTitle');
-      title.value += ` ${e.target.textContent}`;
-    });
-    document.getElementById('kbdToggle').onclick = () => {
-      keyboard.style.display = keyboard.style.display === 'block' ? 'none' : 'block';
-    };
-
-    document.addEventListener('keydown', (e) => {
+    // Keyboard shortcuts
+    document.addEventListener('keydown', e => {
       const tag = document.activeElement?.tagName?.toLowerCase();
-      if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
-      if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
-      if (tag !== 'input' && tag !== 'textarea' && e.key === 'Enter') { e.preventDefault(); recognizeDrawing(); }
+      if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+      if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
       if (tag === 'input' || tag === 'textarea') return;
+      if (e.key === 'Enter') { e.preventDefault(); recognizeDrawing(); }
       if (e.key.toLowerCase() === 'p') document.querySelector('[data-tool="pencil"]').click();
       if (e.key.toLowerCase() === 'e') document.querySelector('[data-tool="eraser"]').click();
     });
 
+    /* ============================================================
+       NOTEBOOK & PAGE MANAGEMENT
+    ============================================================ */
+
+    const NOTEBOOK_ICONS = ['📘','📗','📙','📓','📒','📔','📕','📖'];
+    let notebooks = [
+      { id: 1, name: 'Matemáticas', icon: '📘' },
+      { id: 2, name: 'Álgebra',     icon: '📗' },
+      { id: 3, name: 'Cálculo',     icon: '📙' },
+      { id: 4, name: 'Geometría',   icon: '📓' },
+    ];
+    let pages = [
+      { id: 1, notebookId: 1, name: 'Clase 1 — Derivadas' },
+      { id: 2, notebookId: 1, name: 'Clase 2 — Integrales' },
+      { id: 3, notebookId: 1, name: 'Práctica #1' },
+    ];
+    let activeNotebookId = 1;
+    let activePageId     = 1;
+    let nextId = 10;
+
+    // mini context menu for sidebar items
+    const sidebarMenu = document.createElement('div');
+    sidebarMenu.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #ddd6fe;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:6px;min-width:160px;display:none;';
+    document.body.appendChild(sidebarMenu);
+
+    function showSidebarMenu(x, y, items) {
+      sidebarMenu.innerHTML = '';
+      items.forEach(([label, fn, danger]) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `width:100%;text-align:left;border:none;background:transparent;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;color:${danger ? '#dc2626' : 'inherit'};`;
+        b.onmouseenter = () => b.style.background = danger ? '#fee2e2' : '#f5f3ff';
+        b.onmouseleave = () => b.style.background = 'transparent';
+        b.onclick = () => { fn(); hideSidebarMenu(); };
+        sidebarMenu.appendChild(b);
+      });
+      sidebarMenu.style.left = x + 'px';
+      sidebarMenu.style.top  = y + 'px';
+      sidebarMenu.style.display = 'block';
+    }
+    function hideSidebarMenu() { sidebarMenu.style.display = 'none'; }
+    document.addEventListener('mousedown', e => { if (!sidebarMenu.contains(e.target)) hideSidebarMenu(); });
+
+    function renderNotebooks() {
+      const ul = document.getElementById('notebookList');
+      ul.innerHTML = '';
+      notebooks.forEach(nb => {
+        const li = document.createElement('li');
+        li.textContent = `${nb.icon} ${nb.name}`;
+        if (nb.id === activeNotebookId) li.classList.add('active');
+        li.onclick = () => { activeNotebookId = nb.id; renderNotebooks(); renderPages(); renderPageTabs(); };
+        li.oncontextmenu = e => {
+          e.preventDefault();
+          showSidebarMenu(e.clientX, e.clientY, [
+            ['✏️ Renombrar', () => {
+              const n = prompt('Nuevo nombre:', nb.name);
+              if (n?.trim()) { nb.name = n.trim(); renderNotebooks(); }
+            }],
+            ['🗑️ Borrar cuaderno', () => {
+              if (!confirm(`¿Borrar "${nb.name}" y todas sus páginas?`)) return;
+              pages = pages.filter(p => p.notebookId !== nb.id);
+              notebooks = notebooks.filter(x => x.id !== nb.id);
+              if (activeNotebookId === nb.id) { activeNotebookId = notebooks[0]?.id || null; activePageId = null; }
+              renderNotebooks(); renderPages(); renderPageTabs();
+            }, true]
+          ]);
+        };
+        ul.appendChild(li);
+      });
+    }
+
+    function renderPages() {
+      const ul = document.getElementById('pageList');
+      ul.innerHTML = '';
+      const filtered = pages.filter(p => p.notebookId === activeNotebookId);
+      filtered.forEach(pg => {
+        const li = document.createElement('li');
+        li.style.paddingLeft = '10px';
+        li.innerHTML = `<span>📄 ${pg.name}</span>`;
+        if (pg.id === activePageId) li.classList.add('active');
+        li.onclick = () => { switchPage(pg.id); };
+        li.oncontextmenu = e => {
+          e.preventDefault();
+          showSidebarMenu(e.clientX, e.clientY, [
+            ['✏️ Renombrar', () => {
+              const n = prompt('Nuevo nombre:', pg.name);
+              if (n?.trim()) {
+                pg.name = n.trim();
+                if (pg.id === activePageId) document.getElementById('pageTitle').value = pg.name;
+                renderPages(); renderPageTabs();
+              }
+            }],
+            ['🗑️ Borrar página', () => {
+              if (pages.filter(p => p.notebookId === activeNotebookId).length <= 1) {
+                showToast('No podés borrar la única página del cuaderno');
+                return;
+              }
+              if (!confirm(`¿Borrar "${pg.name}"?`)) return;
+              pageData[pg.id] = null;
+              pages = pages.filter(x => x.id !== pg.id);
+              if (activePageId === pg.id) {
+                const remaining = pages.filter(p => p.notebookId === activeNotebookId);
+                switchPage(remaining[0]?.id || null);
+              }
+              renderPages(); renderPageTabs();
+            }, true]
+          ]);
+        };
+        ul.appendChild(li);
+      });
+    }
+
+    function renderPageTabs() {
+      const tabsEl = document.getElementById('pageTabs');
+      tabsEl.innerHTML = '';
+      const filtered = pages.filter(p => p.notebookId === activeNotebookId);
+      filtered.forEach(pg => {
+        const tab = document.createElement('div');
+        tab.className = 'page-tab' + (pg.id === activePageId ? ' active' : '');
+        tab.textContent = pg.name;
+        tab.onclick = () => switchPage(pg.id);
+        tab.oncontextmenu = e => {
+          e.preventDefault();
+          showSidebarMenu(e.clientX, e.clientY, [
+            ['✏️ Renombrar', () => {
+              const n = prompt('Nuevo nombre:', pg.name);
+              if (n?.trim()) { pg.name = n.trim(); if (pg.id === activePageId) document.getElementById('pageTitle').value = pg.name; renderPages(); renderPageTabs(); }
+            }],
+            ['🗑️ Borrar', () => {
+              if (pages.filter(p => p.notebookId === activeNotebookId).length <= 1) { showToast('No podés borrar la única página'); return; }
+              if (!confirm(`¿Borrar "${pg.name}"?`)) return;
+              pageData[pg.id] = null;
+              pages = pages.filter(x => x.id !== pg.id);
+              if (activePageId === pg.id) { const r = pages.filter(p => p.notebookId === activeNotebookId); switchPage(r[0]?.id || null); }
+              renderPages(); renderPageTabs();
+            }, true]
+          ]);
+        };
+        tabsEl.appendChild(tab);
+      });
+      // "+" button
+      const addTab = document.createElement('div');
+      addTab.className = 'page-tab';
+      addTab.textContent = '+';
+      addTab.style.fontWeight = '700';
+      addTab.onclick = addNewPage;
+      tabsEl.appendChild(addTab);
+    }
+
+    /* Per-page state storage */
+    const pageData = {};
+
+    function saveCurrentPage() {
+      if (!activePageId) return;
+      pageData[activePageId] = {
+        strokes: JSON.parse(JSON.stringify(strokes)),
+        annotations: JSON.parse(JSON.stringify(annotations)),
+        recognizedStrokeCount,
+        title: document.getElementById('pageTitle').value
+      };
+    }
+
+    function loadPage(pageId) {
+      const d = pageData[pageId];
+      // clear sheet recognition blocks
+      sheet.querySelectorAll('.recognition').forEach(el => el.remove());
+      floatingImages.forEach(s => s.container.remove());
+      floatingImages.length = 0;
+      activeImg = null;
+      if (d) {
+        strokes = JSON.parse(JSON.stringify(d.strokes));
+        annotations = JSON.parse(JSON.stringify(d.annotations));
+        recognizedStrokeCount = d.recognizedStrokeCount;
+        document.getElementById('pageTitle').value = d.title;
+      } else {
+        strokes = []; annotations = []; recognizedStrokeCount = 0;
+        const pg = pages.find(p => p.id === pageId);
+        document.getElementById('pageTitle').value = pg ? pg.name : 'Nueva página';
+      }
+      undoStack = []; redoStack = [];
+      clearAutoTimer();
+      redrawAll();
+      refreshNotes();
+      syncStatus();
+      hint.style.display = strokes.length ? 'none' : 'block';
+    }
+
+    function switchPage(pageId) {
+      saveCurrentPage();
+      activePageId = pageId;
+      loadPage(pageId);
+      renderPages();
+      renderPageTabs();
+    }
+
+    function addNewPage() {
+      const name = prompt('Nombre de la nueva página:', `Página ${pages.length + 1}`);
+      if (!name?.trim()) return;
+      const pg = { id: ++nextId, notebookId: activeNotebookId, name: name.trim() };
+      pages.push(pg);
+      switchPage(pg.id);
+      renderPages();
+      renderPageTabs();
+    }
+
+    document.getElementById('addPageBtn').onclick = addNewPage;
+    document.getElementById('addNotebookBtn').onclick = () => {
+      const name = prompt('Nombre del cuaderno:');
+      if (!name?.trim()) return;
+      const icon = NOTEBOOK_ICONS[notebooks.length % NOTEBOOK_ICONS.length];
+      const nb = { id: ++nextId, name: name.trim(), icon };
+      notebooks.push(nb);
+      const pg = { id: ++nextId, notebookId: nb.id, name: 'Página 1' };
+      pages.push(pg);
+      activeNotebookId = nb.id;
+      switchPage(pg.id);
+      renderNotebooks();
+      renderPages();
+      renderPageTabs();
+    };
+
+    // sync title input → page name
+    document.getElementById('pageTitle').addEventListener('input', e => {
+      const pg = pages.find(p => p.id === activePageId);
+      if (pg) { pg.name = e.target.value; renderPages(); renderPageTabs(); }
+    });
+
+    /* ============================================================
+       ZOOM — scales the wrapper so the scroll container sees real size
+    ============================================================ */
+    let zoomLevel = 1;
+    const ZOOM_MIN = 0.25, ZOOM_MAX = 3, ZOOM_STEP = 0.1;
+    const zoomWrapper = document.getElementById('zoomWrapper');
+
+    function applyZoom() {
+      // Use transform on wrapper — but we manually set wrapper size so scroll works
+      const baseW = sheet.offsetWidth;
+      const baseH = sheet.offsetHeight;
+      zoomWrapper.style.transform = `scale(${zoomLevel})`;
+      zoomWrapper.style.transformOrigin = 'top left';
+      // Tell the scroll container how much real space the scaled wrapper needs
+      zoomWrapper.style.width  = Math.round(baseW * zoomLevel) + 'px';
+      zoomWrapper.style.height = Math.round(baseH * zoomLevel) + 'px';
+      document.getElementById('zoomLabel').textContent = Math.round(zoomLevel * 100) + '%';
+    }
+
+    function zoomIn()    { zoomLevel = Math.min(ZOOM_MAX, +(zoomLevel + ZOOM_STEP).toFixed(2)); applyZoom(); }
+    function zoomOut()   { zoomLevel = Math.max(ZOOM_MIN, +(zoomLevel - ZOOM_STEP).toFixed(2)); applyZoom(); }
+    function zoomReset() { zoomLevel = 1; applyZoom(); }
+
+    document.getElementById('zoomInBtn').onclick    = zoomIn;
+    document.getElementById('zoomOutBtn').onclick   = zoomOut;
+    document.getElementById('zoomResetBtn').onclick = zoomReset;
+
+    // Ctrl + wheel — same as OneNote
+    document.getElementById('canvasScroll').addEventListener('wheel', e => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      if (e.deltaY < 0) zoomIn(); else zoomOut();
+    }, { passive: false });
+
+    // Ctrl+= / Ctrl+- / Ctrl+0
+    document.addEventListener('keydown', e => {
+      if (!e.ctrlKey) return;
+      if (e.key === '=' || e.key === '+') { e.preventDefault(); zoomIn(); }
+      if (e.key === '-')                  { e.preventDefault(); zoomOut(); }
+      if (e.key === '0')                  { e.preventDefault(); zoomReset(); }
+    });
+
+    /* ============================================================
+       INIT
+    ============================================================ */
     document.getElementById('dateLine').textContent = new Date().toLocaleString('es-AR', { dateStyle: 'full', timeStyle: 'short' });
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
     applyCanvasCursor();
+    updateDrawLayerPointerEvents();
+    renderNotebooks();
+    renderPages();
+    renderPageTabs();
+    loadPage(activePageId);
     refreshNotes();
     syncStatus();
-    document.getElementById('mathModeBtn').classList.add('active');
   </script>
 </body>
 </html>
