@@ -234,6 +234,9 @@
     const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
     const GROQ_KEY = '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';
     const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    const MYSCRIPT_ENDPOINT = 'https://cloud.myscript.com/api/v4.0/iink/batch';
+    const MYSCRIPT_APPLICATION_KEY = '0d7ed1fd-f6e9-476a-994f-4e18442d63f3';
+    const MYSCRIPT_HMAC_SECRET = '36d2e1fe-689c-4d54-9888-039e0c4b36a0';
 
     const canvas = document.getElementById('drawCanvas');
     const ctx = canvas.getContext('2d');
@@ -245,15 +248,9 @@
     let strokes = [], annotations = [], undoStack = [], redoStack = [];
     let currentTool = 'pencil', currentColor = '#1e1b4b', currentSize = 4;
     let drawing = false, currentStroke = [];
+    let isMathMode = true;
 
     const symbolKeys = ['∫','∑','√','∞','π','θ','α','β','Δ','≤','≥','≠','±','×','÷','²','³','xⁿ','d/dx','lim','log','ln','sin','cos','tan'];
-    const fallbackRecognitions = [
-      'f(x) = x³ - 2x² + x',
-      'sen²(x) + cos²(x) = 1',
-      "f'(x) = lim(h→0) [f(x+h)-f(x)] / h",
-      'e^(iπ) + 1 = 0'
-    ];
-
     function resizeCanvas() {
       const dpr = window.devicePixelRatio || 1;
       const r = wrap.getBoundingClientRect();
@@ -275,8 +272,8 @@
 
     function getPos(e) {
       const rect = canvas.getBoundingClientRect();
-      if (e.touches?.[0]) return {x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top};
-      return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+      if (e.touches?.[0]) return {x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top, t: Date.now()};
+      return {x: e.clientX - rect.left, y: e.clientY - rect.top, t: Date.now()};
     }
 
     function pushUndo() {
@@ -445,30 +442,106 @@
       document.getElementById('statusCount').textContent = `Trazos: ${strokes.length}`;
     }
 
-    function recognizeDrawing() {
-      showToast('Reconociendo... ✨');
-      const title = document.getElementById('pageTitle').value;
-      const patterns = [
-        { regex: /x²|x\^2/i, data: { texto_reconocido: 'x²', tipo: 'formula', resultado: 'Potencia cuadrática', latex: 'x^2', confianza: 'alta' }},
-        { regex: /d\/dx|derivad/i, data: { texto_reconocido: "d/dx", tipo: 'math', resultado: 'Operador de derivación', latex: '\\frac{d}{dx}', confianza: 'alta' }},
-        { regex: /∫|integral/i, data: { texto_reconocido: '∫ f(x) dx', tipo: 'math', resultado: 'Integral indefinida', latex: '\\int f(x)\\,dx', confianza: 'media' }},
-        { regex: /lim|límite/i, data: { texto_reconocido: 'lim(x→a) f(x)', tipo: 'math', resultado: 'Comportamiento local de función', latex: '\\lim_{x\\to a} f(x)', confianza: 'media' }},
-        { regex: /pitágoras/i, data: { texto_reconocido: 'a² + b² = c²', tipo: 'formula', resultado: 'Relación en triángulo rectángulo', latex: 'a^2+b^2=c^2', confianza: 'alta' }},
-        { regex: /cuadrática/i, data: { texto_reconocido: 'x = (-b ± √(b²-4ac))/2a', tipo: 'formula', resultado: 'Fórmula cuadrática', latex: 'x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}', confianza: 'alta' }},
-        { regex: /lineal/i, data: { texto_reconocido: 'f(x)=mx+b', tipo: 'formula', resultado: 'Función lineal', latex: 'f(x)=mx+b', confianza: 'alta' }},
-        { regex: /trig|sen|cos|tan/i, data: { texto_reconocido: 'sen²(x)+cos²(x)=1', tipo: 'math', resultado: 'Identidad trigonométrica fundamental', latex: '\\sin^2(x)+\\cos^2(x)=1', confianza: 'alta' }},
-        { regex: /euler/i, data: { texto_reconocido: 'e^(iπ)+1=0', tipo: 'formula', resultado: 'Identidad de Euler', latex: 'e^{i\\pi}+1=0', confianza: 'alta' }}
-      ];
-      let found = patterns.find(p => p.regex.test(title))?.data;
-      if (!found) {
-        const pick = fallbackRecognitions[Math.floor(Math.random() * fallbackRecognitions.length)];
-        found = { texto_reconocido: pick, tipo: 'math', resultado: 'Expresión matemática detectada', latex: pick.replace(/sen/g,'\\sin'), confianza: 'media' };
+    function collectInkStrokes() {
+      const referenceTime = strokes[0]?.points?.[0]?.t || Date.now();
+      return strokes
+        .filter(stroke => stroke.tool !== 'eraser' && stroke.points.length > 1)
+        .map(stroke => ({
+          x: stroke.points.map(point => Number(point.x.toFixed(2))),
+          y: stroke.points.map(point => Number(point.y.toFixed(2))),
+          t: stroke.points.map(point => Math.max(0, Math.round((point.t || Date.now()) - referenceTime)))
+        }));
+    }
+
+    async function signBodyWithHmac(body) {
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(MYSCRIPT_HMAC_SECRET);
+      const bodyData = encoder.encode(body);
+      const cryptoKey = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+      const signature = await crypto.subtle.sign('HMAC', cryptoKey, bodyData);
+      return Array.from(new Uint8Array(signature)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    function extractMyScriptResult(payload, contentType) {
+      const asText = (v) => typeof v === 'string' ? v.trim() : '';
+      const values = [
+        payload?.result?.results?.[0]?.text,
+        payload?.result?.results?.[0]?.label,
+        payload?.result?.results?.[0]?.value,
+        payload?.results?.[0]?.text,
+        payload?.results?.[0]?.label,
+        payload?.results?.[0]?.value,
+        payload?.text,
+        payload?.label,
+        payload?.value,
+        payload?.exports?.['application/x-latex'],
+        payload?.exports?.['text/plain']
+      ].map(asText).filter(Boolean);
+      const recognizedText = values[0] || 'Sin resultado de texto.';
+      const latex = asText(payload?.exports?.['application/x-latex']) || (contentType === 'Math' ? recognizedText : 'N/A');
+      return {
+        texto_reconocido: recognizedText,
+        tipo: contentType === 'Math' ? 'math' : 'text',
+        resultado: contentType === 'Math' ? 'Reconocimiento matemático real (MyScript)' : 'Reconocimiento de texto real (MyScript)',
+        latex,
+        confianza: 'cloud'
+      };
+    }
+
+    async function recognizeDrawing() {
+      const inkStrokes = collectInkStrokes();
+      if (!inkStrokes.length) {
+        showToast('No hay trazos para reconocer ✍️');
+        return null;
       }
-      annotations.push(found);
-      addRecognitionBlock(found);
-      refreshNotes();
-      setTimeout(() => showToast('✅ Reconocido'), 300);
-      return found;
+
+      showToast('Reconociendo con MyScript... ✨');
+      const contentType = isMathMode ? 'Math' : 'Text';
+      const dpi = window.devicePixelRatio ? 96 * window.devicePixelRatio : 96;
+      const bodyPayload = {
+        xDPI: dpi,
+        yDPI: dpi,
+        contentType,
+        configuration: {
+          lang: 'es_ES',
+          export: {
+            jiix: { strokes: false },
+            tex: {}
+          }
+        },
+        strokeGroups: [{ strokes: inkStrokes }]
+      };
+
+      const body = JSON.stringify(bodyPayload);
+      try {
+        const signature = await signBodyWithHmac(body);
+        const res = await fetch(MYSCRIPT_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            applicationKey: MYSCRIPT_APPLICATION_KEY,
+            hmacKey: signature
+          },
+          body
+        });
+
+        if (!res.ok) {
+          const message = await res.text();
+          throw new Error(`MyScript ${res.status}: ${message || res.statusText}`);
+        }
+
+        const payload = await res.json();
+        const found = extractMyScriptResult(payload, contentType);
+        annotations.push(found);
+        addRecognitionBlock(found);
+        refreshNotes();
+        showToast('✅ Reconocido');
+        return found;
+      } catch (err) {
+        console.error('Error de reconocimiento MyScript:', err);
+        showToast('Error al reconocer con MyScript ❌');
+        return null;
+      }
     }
 
     function addRecognitionBlock(rec) {
@@ -598,6 +671,12 @@
     window.addEventListener('touchend', endDraw);
 
     document.getElementById('recognizeBtn').onclick = recognizeDrawing;
+    document.getElementById('mathModeBtn').onclick = (e) => {
+      isMathMode = !isMathMode;
+      e.currentTarget.classList.toggle('active', isMathMode);
+      e.currentTarget.textContent = isMathMode ? '∑ modo matemático' : '📝 modo texto';
+      showToast(isMathMode ? 'Modo matemático activado ∑' : 'Modo texto activado 📝');
+    };
     document.getElementById('undoBtn').onclick = undo;
     document.getElementById('redoBtn').onclick = redo;
     document.getElementById('clearBtn').onclick = () => { pushUndo(); strokes = []; redoStack = []; redrawAll(); syncStatus(); hint.style.display = 'block'; };
@@ -640,6 +719,7 @@
     applyCanvasCursor();
     refreshNotes();
     syncStatus();
+    document.getElementById('mathModeBtn').classList.add('active');
   </script>
 </body>
 </html>
