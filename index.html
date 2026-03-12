@@ -137,7 +137,24 @@
       width: 8px; height: 8px; border-radius: 999px; background: #22c55e;
       animation: pulse 1.4s infinite;
     }
+    .auto-recognition-status {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      color: #c4b5fd;
+      animation: wait-blink 1s ease-in-out infinite;
+    }
+    .auto-recognition-status .mini-spinner {
+      width: 10px;
+      height: 10px;
+      border: 2px solid rgba(196, 181, 253, 0.35);
+      border-top-color: #c4b5fd;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
     @keyframes pulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes wait-blink { 0%,100% { opacity: .6; } 50% { opacity: 1; } }
 
     .toast-container { position: fixed; top: 16px; right: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
     .toast {
@@ -225,6 +242,7 @@
       <span class="pulse"><span class="pulse-dot"></span> Motor IA: online</span>
       <span id="statusMode">Modo: pencil</span>
       <span id="statusColor">Color: #1e1b4b</span>
+      <span class="auto-recognition-status" id="autoRecognitionStatus"><span class="mini-spinner"></span> Reconociendo en breve...</span>
       <span id="statusCount">Trazos: 0</span>
     </footer>
   </div>
@@ -244,11 +262,16 @@
     const toasts = document.getElementById('toasts');
     const notesPanel = document.getElementById('notesPanel');
     const hint = document.getElementById('drawHint');
+    const autoRecognitionStatus = document.getElementById('autoRecognitionStatus');
 
     let strokes = [], annotations = [], undoStack = [], redoStack = [];
     let currentTool = 'pencil', currentColor = '#1e1b4b', currentSize = 4;
     let drawing = false, currentStroke = [];
     let isMathMode = true;
+    let recognizedStrokeCount = 0;
+    let autoRecognizeTimer = null;
+    let autoRecognizeInFlight = false;
+    const AUTO_RECOGNIZE_DELAY_MS = 1200;
 
     const symbolKeys = ['∫','∑','√','∞','π','θ','α','β','Δ','≤','≥','≠','±','×','÷','²','³','xⁿ','d/dx','lim','log','ln','sin','cos','tan'];
     function resizeCanvas() {
@@ -283,6 +306,7 @@
 
     function startDraw(e) {
       if (currentTool !== 'pencil' && currentTool !== 'highlight' && currentTool !== 'eraser') return;
+      clearAutoRecognizeTimer();
       drawing = true;
       currentStroke = [getPos(e)];
       e.preventDefault();
@@ -319,6 +343,42 @@
       redrawAll();
       syncStatus();
       hint.style.display = strokes.length ? 'none' : 'block';
+      scheduleAutoRecognition();
+    }
+
+    function setAutoRecognitionWaiting(waiting) {
+      autoRecognitionStatus.style.display = waiting ? 'inline-flex' : 'none';
+    }
+
+    function hasPendingInkStrokes() {
+      return strokes.slice(recognizedStrokeCount).some(stroke => stroke.tool !== 'eraser' && stroke.points.length > 1);
+    }
+
+    function clearAutoRecognizeTimer() {
+      if (autoRecognizeTimer) {
+        clearTimeout(autoRecognizeTimer);
+        autoRecognizeTimer = null;
+      }
+      setAutoRecognitionWaiting(false);
+    }
+
+    function scheduleAutoRecognition() {
+      clearAutoRecognizeTimer();
+      if (!hasPendingInkStrokes()) return;
+      setAutoRecognitionWaiting(true);
+      autoRecognizeTimer = setTimeout(() => {
+        triggerAutoRecognition();
+      }, AUTO_RECOGNIZE_DELAY_MS);
+    }
+
+    async function triggerAutoRecognition() {
+      autoRecognizeTimer = null;
+      setAutoRecognitionWaiting(false);
+      if (autoRecognizeInFlight || !hasPendingInkStrokes()) return;
+      autoRecognizeInFlight = true;
+      await recognizeDrawing({ onlyNew: true });
+      autoRecognizeInFlight = false;
+      if (hasPendingInkStrokes()) scheduleAutoRecognition();
     }
 
     function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -442,9 +502,10 @@
       document.getElementById('statusCount').textContent = `Trazos: ${strokes.length}`;
     }
 
-    function collectInkStrokes() {
-      const referenceTime = strokes[0]?.points?.[0]?.t || Date.now();
-      return strokes
+    function collectInkStrokes(fromIndex = 0) {
+      const sourceStrokes = strokes.slice(fromIndex);
+      const referenceTime = sourceStrokes[0]?.points?.[0]?.t || Date.now();
+      return sourceStrokes
         .filter(stroke => stroke.tool !== 'eraser' && stroke.points.length > 1)
         .map(stroke => ({
           x: stroke.points.map(point => Number(point.x.toFixed(2))),
@@ -477,10 +538,11 @@
         payload?.exports?.['application/x-latex'],
         payload?.exports?.['text/plain']
       ].map(asText).filter(Boolean);
-      const recognizedText = values[0] || 'Sin resultado de texto.';
+      const recognizedText = values[0] || '';
       const latex = asText(payload?.exports?.['application/x-latex']) || (contentType === 'Math' ? recognizedText : 'N/A');
+      if (!recognizedText && !latex) return null;
       return {
-        texto_reconocido: recognizedText,
+        texto_reconocido: recognizedText || 'Sin resultado de texto.',
         tipo: contentType === 'Math' ? 'math' : 'text',
         resultado: contentType === 'Math' ? 'Reconocimiento matemático real (MyScript)' : 'Reconocimiento de texto real (MyScript)',
         latex,
@@ -488,10 +550,12 @@
       };
     }
 
-    async function recognizeDrawing() {
-      const inkStrokes = collectInkStrokes();
+    async function recognizeDrawing(options = {}) {
+      const { onlyNew = false } = options;
+      const fromIndex = onlyNew ? recognizedStrokeCount : 0;
+      const inkStrokes = collectInkStrokes(fromIndex);
       if (!inkStrokes.length) {
-        showToast('No hay trazos para reconocer ✍️');
+        if (!onlyNew) showToast('No hay trazos para reconocer ✍️');
         return null;
       }
 
@@ -532,14 +596,19 @@
 
         const payload = await res.json();
         const found = extractMyScriptResult(payload, contentType);
+        if (!found) {
+          showToast('No se pudo reconocer, seguí escribiendo...');
+          return null;
+        }
         annotations.push(found);
         addRecognitionBlock(found);
         refreshNotes();
         showToast('✅ Reconocido');
+        recognizedStrokeCount = strokes.length;
         return found;
       } catch (err) {
         console.error('Error de reconocimiento MyScript:', err);
-        showToast('Error al reconocer con MyScript ❌');
+        showToast('No se pudo reconocer, seguí escribiendo...');
         return null;
       }
     }
@@ -629,6 +698,7 @@
       if (!undoStack.length) return;
       redoStack.push(JSON.parse(JSON.stringify(strokes)));
       strokes = undoStack.pop();
+      recognizedStrokeCount = Math.min(recognizedStrokeCount, strokes.length);
       redrawAll();
       syncStatus();
       hint.style.display = strokes.length ? 'none' : 'block';
@@ -638,6 +708,7 @@
       if (!redoStack.length) return;
       undoStack.push(JSON.parse(JSON.stringify(strokes)));
       strokes = redoStack.pop();
+      recognizedStrokeCount = Math.min(recognizedStrokeCount, strokes.length);
       redrawAll();
       syncStatus();
       hint.style.display = strokes.length ? 'none' : 'block';
@@ -679,7 +750,7 @@
     };
     document.getElementById('undoBtn').onclick = undo;
     document.getElementById('redoBtn').onclick = redo;
-    document.getElementById('clearBtn').onclick = () => { pushUndo(); strokes = []; redoStack = []; redrawAll(); syncStatus(); hint.style.display = 'block'; };
+    document.getElementById('clearBtn').onclick = () => { pushUndo(); strokes = []; redoStack = []; recognizedStrokeCount = 0; clearAutoRecognizeTimer(); redrawAll(); syncStatus(); hint.style.display = 'block'; };
     document.getElementById('exportBtn').onclick = exportData;
     document.getElementById('assistantToggle').onclick = () => {
       const p = document.getElementById('assistantPanel');
