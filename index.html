@@ -432,6 +432,7 @@
     function hideImageContextMenu() { imageContextMenu.style.display = 'none'; }
 
     function startDragImage(imageState, event) {
+      if (event.button !== 0) return;
       event.preventDefault();
       setActiveImage(imageState);
       hideImageContextMenu();
@@ -566,6 +567,7 @@
     function createFloatingImage(dataUrl, pos = {}) {
       const container = document.createElement('div');
       container.className = 'floating-image';
+      container.draggable = false;
       const toolbar = document.createElement('div');
       toolbar.className = 'image-toolbar';
       toolbar.innerHTML = '<button class="btn crop-btn">✂️ Recortar</button><button class="btn recognize-btn">🔍 Reconocer</button><button class="btn delete-btn">🗑️ Eliminar</button>';
@@ -573,6 +575,7 @@
       imageWrap.style.position = 'relative';
       const img = document.createElement('img');
       img.src = dataUrl;
+      img.draggable = false;
       const cropOverlay = document.createElement('div');
       cropOverlay.className = 'crop-overlay';
       imageWrap.appendChild(img);
@@ -594,6 +597,11 @@
       };
 
       toolbar.addEventListener('mousedown', (e) => startDragImage(imageState, e));
+      imageWrap.addEventListener('mousedown', (e) => {
+        if (imageState.cropping) return;
+        startDragImage(imageState, e);
+      });
+      container.addEventListener('dragstart', (e) => e.preventDefault());
       toolbar.querySelector('.crop-btn').onclick = () => startCropMode(imageState);
       toolbar.querySelector('.recognize-btn').onclick = () => recognizeImage(imageState);
       toolbar.querySelector('.delete-btn').onclick = () => removeFloatingImage(imageState);
