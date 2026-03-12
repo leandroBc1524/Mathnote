@@ -726,9 +726,13 @@
       setAutoRecognitionWaiting(false);
       if (autoRecognizeInFlight || !hasPendingInkStrokes()) return;
       autoRecognizeInFlight = true;
-      await recognizeDrawing({ onlyNew: true });
-      autoRecognizeInFlight = false;
-      if (hasPendingInkStrokes()) scheduleAutoRecognition();
+      let recognitionSucceeded = false;
+      try {
+        recognitionSucceeded = !!(await recognizeDrawing({ onlyNew: true }));
+      } finally {
+        autoRecognizeInFlight = false;
+      }
+      if (recognitionSucceeded && hasPendingInkStrokes()) scheduleAutoRecognition();
     }
 
     function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
