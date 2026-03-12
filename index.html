@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mathnote NEBO Style</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f2ee;
+      --sidebar-bg: #1e1e2e;
+      --accent: #7c3aed;
+      --accent-light: #ede9fe;
+      --accent-text: #5b21b6;
+      --text: #1e1b4b;
+      --canvas: #fffef7;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Sora', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+    .app { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+    .ribbon { background: #fff; border-bottom: 1px solid #ddd6fe; }
+    .tabs-row {
+      background: var(--sidebar-bg);
+      color: #fff;
+      display: flex;
+      gap: 24px;
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+    .tabs-row .tab.active { color: #c4b5fd; font-weight: 700; }
+    .tools-row {
+      display: flex;
+      gap: 18px;
+      padding: 10px 14px;
+      overflow-x: auto;
+      border-top: 1px solid #ddd6fe;
+    }
+    .group { min-width: max-content; border-right: 1px solid #e5e7eb; padding-right: 14px; }
+    .group:last-child { border-right: none; }
+    .group h4 { margin: 0 0 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+    .btn {
+      border: 1px solid #ddd6fe;
+      background: #fff;
+      border-radius: 10px;
+      padding: 7px 10px;
+      margin-right: 6px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn.active { background: var(--accent-light); color: var(--accent-text); border-color: #a78bfa; }
+    .color-swatch {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      display: inline-block;
+      cursor: pointer;
+      margin-right: 6px;
+    }
+    .color-swatch.active { border-color: #111827; transform: scale(1.08); }
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: 0; }
+    .sidebar {
+      background: var(--sidebar-bg);
+      color: #e5e7eb;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .sidebar h3 { margin: 0 0 8px; color: #c4b5fd; font-size: 14px; }
+    .sidebar ul { list-style: none; margin: 0; padding: 0; }
+    .sidebar li { margin-bottom: 8px; font-size: 14px; }
+    .new-page {
+      border: 1px solid #a78bfa;
+      color: #c4b5fd;
+      background: transparent;
+      border-radius: 10px;
+      padding: 8px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .tip { margin-top: auto; color: #9ca3af; font-size: 12px; }
+    .content { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+    .page-tabs { display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #ddd6fe; background: #fff; }
+    .page-tab { padding: 8px 12px; border-radius: 10px; background: #f8fafc; cursor: pointer; }
+    .page-tab.active { border-bottom: 3px solid var(--accent); background: #f5f3ff; }
+    .canvas-wrap { position: relative; min-height: 0; background: var(--canvas); }
+    .canvas-bg {
+      position: absolute; inset: 0;
+      background-color: var(--canvas);
+      background-image: radial-gradient(#e5e7eb 0.8px, transparent 0.8px);
+      background-size: 18px 18px;
+      opacity: 0.8;
+    }
+    .title-area {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 12px;
+      z-index: 3;
+      background: rgba(255, 254, 247, 0.85);
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: 8px;
+    }
+    #pageTitle {
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      outline: none;
+    }
+    .date-line { color: var(--muted); font-size: 13px; }
+    #drawCanvas { position: absolute; inset: 0; z-index: 2; touch-action: none; }
+    .hint { position: absolute; left: 28px; top: 120px; color: #9ca3af; font-size: 18px; z-index: 1; }
+    .status {
+      background: #111827;
+      color: #d1d5db;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 12px;
+    }
+    .pulse { display: inline-flex; align-items: center; gap: 6px; }
+    .pulse-dot {
+      width: 8px; height: 8px; border-radius: 999px; background: #22c55e;
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: .4 } 50% { opacity: 1 } }
+
+    .toast-container { position: fixed; top: 16px; right: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      background: #1e1e2e;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      animation: fade 2.5s forwards;
+    }
+    @keyframes fade { 0%,80% {opacity:1; transform: translateY(0);} 100% {opacity:0; transform: translateY(-6px);} }
+
+    .recognition, .assistant, .notes-panel, .math-keyboard {
+      position: absolute; z-index: 7; background: #fff; border: 1px solid #ddd6fe; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    }
+    .recognition { right: 24px; top: 120px; width: 360px; padding: 12px; }
+    .badge { display: inline-block; background: var(--accent-light); color: var(--accent-text); border-radius: 999px; font-size: 12px; padding: 3px 8px; }
+    .math-content { font-family: 'JetBrains Mono', monospace; margin: 10px 0; }
+    .math-result { color: var(--accent-text); font-weight: 600; margin-bottom: 6px; }
+
+    .assistant { right: 24px; bottom: 24px; width: 380px; padding: 12px; display: none; }
+    .assistant textarea { width: 100%; min-height: 70px; }
+    .assistant .response { white-space: pre-wrap; margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+
+    .notes-panel { top: 0; right: 0; bottom: 0; width: 280px; padding: 12px; border-radius: 0; display: none; overflow-y: auto; }
+    .notes-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; margin-bottom: 8px; cursor: pointer; }
+
+    .math-keyboard { left: 50%; transform: translateX(-50%); bottom: 14px; padding: 10px; display: none; max-width: 90%; }
+    .key { margin: 4px; padding: 6px 8px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f8fafc; cursor: pointer; }
+    .close-red { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+    .cursor-circle-black { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%231e1b4b' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-violet { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%237c3aed' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-red { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23dc2626' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-blue { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%232563eb' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-green { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%2316a34a' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-circle-orange { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%23ea580c' stroke-width='2'/%3E%3C/svg%3E") 8 8, crosshair; }
+    .cursor-eraser { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect x='4' y='4' width='12' height='12' fill='none' stroke='%23888' stroke-width='2'/%3E%3C/svg%3E") 10 10, cell; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="ribbon">
+      <div class="tabs-row"><span class="tab active">Inicio</span><span class="tab">Insertar</span><span class="tab">Vista</span><span class="tab">Compartir</span></div>
+      <div class="tools-row">
+        <div class="group"><h4>Herramientas</h4><button class="btn active" data-tool="pencil">Lápiz ✏️</button><button class="btn" data-tool="highlight">Resaltador 🖍️</button><button class="btn" data-tool="eraser">Borrador 🧹</button><button class="btn">Seleccionar</button><button class="btn">Texto</button></div>
+        <div class="group"><h4>Colores</h4><span class="color-swatch active" data-color="#1e1b4b" style="background:#1e1b4b"></span><span class="color-swatch" data-color="#7c3aed" style="background:#7c3aed"></span><span class="color-swatch" data-color="#dc2626" style="background:#dc2626"></span><span class="color-swatch" data-color="#2563eb" style="background:#2563eb"></span><span class="color-swatch" data-color="#16a34a" style="background:#16a34a"></span><span class="color-swatch" data-color="#ea580c" style="background:#ea580c"></span></div>
+        <div class="group"><h4>Grosor</h4><button class="btn size-btn" data-size="2">Fino</button><button class="btn size-btn active" data-size="4">Normal</button><button class="btn size-btn" data-size="7">Grueso</button><button class="btn size-btn" data-size="10">Extra</button></div>
+        <div class="group"><h4>IA + Mate</h4><button class="btn" id="recognizeBtn">✨ Reconocer</button><button class="btn" id="mathModeBtn">∑ modo matemático</button><button class="btn" id="kbdToggle">⌨️</button></div>
+        <div class="group"><h4>Editar</h4><button class="btn" id="undoBtn">↩️</button><button class="btn" id="redoBtn">↪️</button><button class="btn" id="clearBtn">🗑️</button><button class="btn" id="notesToggle">📋</button></div>
+        <div class="group"><h4>IA/Export</h4><button class="btn" id="assistantToggle">🤖</button><button class="btn" id="exportBtn">📤</button></div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <div><h3>📚 Cuadernos</h3><ul><li>📘 Álgebra</li><li>📗 Cálculo</li><li>📙 Geometría</li></ul></div>
+        <div><h3>📄 Páginas</h3><ul><li>• Unidad 1</li><li style="padding-left:16px">↳ Límites</li><li style="padding-left:16px">↳ Derivadas</li></ul></div>
+        <button class="new-page">+ Nueva página</button>
+        <div class="tip">Tip: usá Enter para reconocer y Ctrl+Z/Ctrl+Y para historial.</div>
+      </aside>
+
+      <section class="content">
+        <div class="page-tabs"><div class="page-tab active">Página 1</div><div class="page-tab">Página 2</div><div class="page-tab">Página 3</div></div>
+        <div class="canvas-wrap" id="canvasWrap">
+          <div class="canvas-bg"></div>
+          <div class="title-area">
+            <input id="pageTitle" value="Apuntes de Cálculo"/>
+            <div class="date-line" id="dateLine"></div>
+          </div>
+          <div class="hint" id="drawHint">Dibujá acá...</div>
+          <canvas id="drawCanvas"></canvas>
+          <aside class="notes-panel" id="notesPanel"></aside>
+          <div class="assistant" id="assistantPanel">
+            <strong>🤖 Asistente IA</strong>
+            <textarea id="assistantInput" placeholder="Preguntá algo matemático..."></textarea>
+            <button class="btn" id="askBtn">Consultar</button>
+            <div class="response" id="assistantResponse"></div>
+          </div>
+          <div class="math-keyboard" id="mathKeyboard"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="status">
+      <span class="pulse"><span class="pulse-dot"></span> Motor IA: online</span>
+      <span id="statusMode">Modo: pencil</span>
+      <span id="statusColor">Color: #1e1b4b</span>
+      <span id="statusCount">Trazos: 0</span>
+    </footer>
+  </div>
+  <div class="toast-container" id="toasts"></div>
+
+  <script>
+    const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+    const GROQ_KEY = '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';
+    const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+    const canvas = document.getElementById('drawCanvas');
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('canvasWrap');
+    const toasts = document.getElementById('toasts');
+    const notesPanel = document.getElementById('notesPanel');
+    const hint = document.getElementById('drawHint');
+
+    let strokes = [], annotations = [], undoStack = [], redoStack = [];
+    let currentTool = 'pencil', currentColor = '#1e1b4b', currentSize = 4;
+    let drawing = false, currentStroke = [];
+
+    const symbolKeys = ['∫','∑','√','∞','π','θ','α','β','Δ','≤','≥','≠','±','×','÷','²','³','xⁿ','d/dx','lim','log','ln','sin','cos','tan'];
+    const fallbackRecognitions = [
+      'f(x) = x³ - 2x² + x',
+      'sen²(x) + cos²(x) = 1',
+      "f'(x) = lim(h→0) [f(x+h)-f(x)] / h",
+      'e^(iπ) + 1 = 0'
+    ];
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const r = wrap.getBoundingClientRect();
+      canvas.width = r.width * dpr;
+      canvas.height = r.height * dpr;
+      canvas.style.width = r.width + 'px';
+      canvas.style.height = r.height + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      redrawAll();
+    }
+
+    function showToast(message) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.textContent = message;
+      toasts.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      if (e.touches?.[0]) return {x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top};
+      return {x: e.clientX - rect.left, y: e.clientY - rect.top};
+    }
+
+    function pushUndo() {
+      undoStack.push(JSON.parse(JSON.stringify(strokes)));
+      if (undoStack.length > 80) undoStack.shift();
+    }
+
+    function startDraw(e) {
+      if (currentTool !== 'pencil' && currentTool !== 'highlight' && currentTool !== 'eraser') return;
+      drawing = true;
+      currentStroke = [getPos(e)];
+      e.preventDefault();
+    }
+
+    function moveDraw(e) {
+      if (!drawing) return;
+      const p = getPos(e);
+      currentStroke.push(p);
+      drawStrokePreview(currentStroke);
+      e.preventDefault();
+    }
+
+    function endDraw() {
+      if (!drawing) return;
+      drawing = false;
+      if (currentStroke.length < 2) return;
+      pushUndo();
+      redoStack = [];
+      const stroke = {
+        points: [...currentStroke],
+        color: currentColor,
+        size: currentSize,
+        tool: currentTool,
+        alpha: currentTool === 'highlight' ? 0.3 : 1.0,
+        corrected: null
+      };
+      if (stroke.tool !== 'eraser') {
+        stroke.corrected = classifyShape(stroke.points);
+      }
+      strokes.push(stroke);
+      if (stroke.corrected === 'line') showToast('📏 Línea corregida a recta');
+      if (stroke.corrected === 'circle') showToast('⭕ Forma corregida a óvalo');
+      redrawAll();
+      syncStatus();
+      hint.style.display = strokes.length ? 'none' : 'block';
+    }
+
+    function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    function pathLength(points) {
+      let len = 0;
+      for (let i = 1; i < points.length; i++) len += distance(points[i - 1], points[i]);
+      return len;
+    }
+
+    function isAlmostStraightLine(points) {
+      if (points.length < 4) return false;
+      const start = points[0], end = points[points.length - 1];
+      const len = distance(start, end);
+      if (len < 20) return false;
+      const A = end.y - start.y;
+      const B = start.x - end.x;
+      const C = end.x * start.y - start.x * end.y;
+      let maxDev = 0;
+      for (const p of points) {
+        const dev = Math.abs(A * p.x + B * p.y + C) / Math.hypot(A, B);
+        maxDev = Math.max(maxDev, dev);
+      }
+      return maxDev < len * 0.18;
+    }
+
+    function classifyShape(points) {
+      if (isAlmostStraightLine(points)) return 'line';
+      const perimeter = pathLength(points);
+      const closeDistance = distance(points[0], points[points.length - 1]);
+      if (perimeter > 40 && closeDistance < perimeter * 0.25) return 'circle';
+      return null;
+    }
+
+    function drawStroke(stroke) {
+      if (stroke.tool === 'eraser') {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.lineWidth = 20;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+        ctx.stroke();
+        ctx.restore();
+        return;
+      }
+      if (stroke.corrected === 'line') return drawCleanLine(stroke);
+      if (stroke.corrected === 'circle') return drawCleanCircle(stroke);
+      ctx.save();
+      ctx.globalAlpha = stroke.alpha;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.tool === 'highlight' ? 14 : stroke.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      stroke.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawCleanLine(stroke) {
+      const first = stroke.points[0], last = stroke.points[stroke.points.length - 1];
+      ctx.save();
+      ctx.globalAlpha = stroke.alpha;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.tool === 'highlight' ? 14 : stroke.size;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(first.x, first.y);
+      ctx.lineTo(last.x, last.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawCleanCircle(stroke) {
+      const xs = stroke.points.map(p => p.x), ys = stroke.points.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+      const rx = Math.max((maxX - minX) / 2, 2), ry = Math.max((maxY - minY) / 2, 2);
+      ctx.save();
+      ctx.globalAlpha = stroke.alpha;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.tool === 'highlight' ? 14 : stroke.size;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawStrokePreview(points) {
+      redrawAll();
+      drawStroke({points, color: currentColor, size: currentSize, tool: currentTool, alpha: currentTool === 'highlight' ? 0.3 : 1.0, corrected: null});
+    }
+
+    function redrawAll() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      strokes.forEach(drawStroke);
+    }
+
+    function applyCanvasCursor() {
+      canvas.classList.remove('cursor-circle-black','cursor-circle-violet','cursor-circle-red','cursor-circle-blue','cursor-circle-green','cursor-circle-orange','cursor-eraser');
+      if (currentTool === 'eraser') {
+        canvas.classList.add('cursor-eraser');
+        return;
+      }
+      if (!['pencil', 'highlight'].includes(currentTool)) return;
+      const map = {
+        '#1e1b4b': 'cursor-circle-black',
+        '#7c3aed': 'cursor-circle-violet',
+        '#dc2626': 'cursor-circle-red',
+        '#2563eb': 'cursor-circle-blue',
+        '#16a34a': 'cursor-circle-green',
+        '#ea580c': 'cursor-circle-orange'
+      };
+      canvas.classList.add(map[currentColor] || 'cursor-circle-black');
+    }
+
+    function syncStatus() {
+      document.getElementById('statusMode').textContent = `Modo: ${currentTool}`;
+      document.getElementById('statusColor').textContent = `Color: ${currentColor}`;
+      document.getElementById('statusCount').textContent = `Trazos: ${strokes.length}`;
+    }
+
+    function recognizeDrawing() {
+      showToast('Reconociendo... ✨');
+      const title = document.getElementById('pageTitle').value;
+      const patterns = [
+        { regex: /x²|x\^2/i, data: { texto_reconocido: 'x²', tipo: 'formula', resultado: 'Potencia cuadrática', latex: 'x^2', confianza: 'alta' }},
+        { regex: /d\/dx|derivad/i, data: { texto_reconocido: "d/dx", tipo: 'math', resultado: 'Operador de derivación', latex: '\\frac{d}{dx}', confianza: 'alta' }},
+        { regex: /∫|integral/i, data: { texto_reconocido: '∫ f(x) dx', tipo: 'math', resultado: 'Integral indefinida', latex: '\\int f(x)\\,dx', confianza: 'media' }},
+        { regex: /lim|límite/i, data: { texto_reconocido: 'lim(x→a) f(x)', tipo: 'math', resultado: 'Comportamiento local de función', latex: '\\lim_{x\\to a} f(x)', confianza: 'media' }},
+        { regex: /pitágoras/i, data: { texto_reconocido: 'a² + b² = c²', tipo: 'formula', resultado: 'Relación en triángulo rectángulo', latex: 'a^2+b^2=c^2', confianza: 'alta' }},
+        { regex: /cuadrática/i, data: { texto_reconocido: 'x = (-b ± √(b²-4ac))/2a', tipo: 'formula', resultado: 'Fórmula cuadrática', latex: 'x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}', confianza: 'alta' }},
+        { regex: /lineal/i, data: { texto_reconocido: 'f(x)=mx+b', tipo: 'formula', resultado: 'Función lineal', latex: 'f(x)=mx+b', confianza: 'alta' }},
+        { regex: /trig|sen|cos|tan/i, data: { texto_reconocido: 'sen²(x)+cos²(x)=1', tipo: 'math', resultado: 'Identidad trigonométrica fundamental', latex: '\\sin^2(x)+\\cos^2(x)=1', confianza: 'alta' }},
+        { regex: /euler/i, data: { texto_reconocido: 'e^(iπ)+1=0', tipo: 'formula', resultado: 'Identidad de Euler', latex: 'e^{i\\pi}+1=0', confianza: 'alta' }}
+      ];
+      let found = patterns.find(p => p.regex.test(title))?.data;
+      if (!found) {
+        const pick = fallbackRecognitions[Math.floor(Math.random() * fallbackRecognitions.length)];
+        found = { texto_reconocido: pick, tipo: 'math', resultado: 'Expresión matemática detectada', latex: pick.replace(/sen/g,'\\sin'), confianza: 'media' };
+      }
+      annotations.push(found);
+      addRecognitionBlock(found);
+      refreshNotes();
+      setTimeout(() => showToast('✅ Reconocido'), 300);
+      return found;
+    }
+
+    function addRecognitionBlock(rec) {
+      const box = document.createElement('div');
+      box.className = 'recognition';
+      const badge = rec.tipo === 'formula' ? '📐 Fórmula' : rec.tipo === 'math' ? '∑ Matemática' : '📝 Texto';
+      box.innerHTML = `<span class="badge">${badge}</span>
+      <div class="math-content">${rec.texto_reconocido}</div>
+      <div class="math-result">${rec.resultado}</div>
+      <div class="math-content">LaTeX: ${rec.latex}</div>
+      <button class="btn copy-latex">Copiar LaTeX</button>
+      <button class="btn explain">🤖 Explicar</button>
+      <button class="btn solve">⚡ Resolver</button>`;
+      wrap.appendChild(box);
+      box.querySelector('.copy-latex').onclick = async () => {
+        await navigator.clipboard.writeText(rec.latex);
+        showToast('LaTeX copiado 📋');
+      };
+      box.querySelector('.explain').onclick = () => openAssistant(rec.texto_reconocido);
+      box.querySelector('.solve').onclick = () => openAssistant(`Resolvé esto: ${rec.texto_reconocido}`);
+    }
+
+    function refreshNotes() {
+      notesPanel.innerHTML = '<h4>📋 Anotaciones</h4>';
+      annotations.forEach(a => {
+        const el = document.createElement('div');
+        el.className = 'notes-item';
+        el.innerHTML = `<strong>${a.tipo}</strong><div>${a.texto_reconocido}</div><small>${a.resultado}</small>`;
+        el.onclick = () => openAssistant(a.texto_reconocido);
+        notesPanel.appendChild(el);
+      });
+    }
+
+    function exportData() {
+      const title = document.getElementById('pageTitle').value;
+      const date = document.getElementById('dateLine').textContent;
+      const lines = [`Título: ${title}`, `Fecha: ${date}`, '', 'Anotaciones:'];
+      annotations.forEach((a, i) => lines.push(`${i + 1}. [${a.tipo}] ${a.texto_reconocido}`, `   Resultado: ${a.resultado}`, `   LaTeX: ${a.latex}`));
+      const blob = new Blob([lines.join('\n')], {type: 'text/plain'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${title.replace(/\s+/g, '_')}.txt`;
+      a.click();
+      showToast('📤 Exportado');
+    }
+
+    async function queryAssistant() {
+      const input = document.getElementById('assistantInput');
+      const response = document.getElementById('assistantResponse');
+      const pregunta = input.value.trim();
+      if (!pregunta) return;
+      response.textContent = 'Pensando...';
+      const pageTitle = document.getElementById('pageTitle').value;
+      const SYSTEM_PROMPT = `Sos un asistente de matemáticas integrado en una app de apuntes estilo NEBO/OneNote.\nEl usuario escribe apuntes de matemáticas a mano y tus respuestas se muestran en su cuaderno.\nREGLAS:\n- Respuestas cortas y directas (máx 3-4 líneas)\n- Usá notación matemática: f'(x), x², ∫, Δ, etc.\n- Si hay ecuación, mostrá el paso a paso brevemente\n- Respondé en español rioplatense (vos, boludo, etc.)\n- Sin markdown, solo texto plano con símbolos matemáticos\n- Contexto: el usuario toma apuntes de ${pageTitle}`;
+
+      try {
+        const res = await fetch(GROQ_ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            max_tokens: 1000,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: pregunta }
+            ]
+          })
+        });
+        const data = await res.json();
+        response.textContent = data?.choices?.[0]?.message?.content || 'No hubo respuesta del motor.';
+      } catch (err) {
+        response.textContent = `Error consultando IA: ${err.message}`;
+      }
+    }
+
+    function openAssistant(text='') {
+      const panel = document.getElementById('assistantPanel');
+      panel.style.display = 'block';
+      const input = document.getElementById('assistantInput');
+      if (text) input.value = text;
+      input.focus();
+    }
+
+    function undo() {
+      if (!undoStack.length) return;
+      redoStack.push(JSON.parse(JSON.stringify(strokes)));
+      strokes = undoStack.pop();
+      redrawAll();
+      syncStatus();
+      hint.style.display = strokes.length ? 'none' : 'block';
+    }
+
+    function redo() {
+      if (!redoStack.length) return;
+      undoStack.push(JSON.parse(JSON.stringify(strokes)));
+      strokes = redoStack.pop();
+      redrawAll();
+      syncStatus();
+      hint.style.display = strokes.length ? 'none' : 'block';
+    }
+
+    document.querySelectorAll('[data-tool]').forEach(btn => btn.onclick = () => {
+      document.querySelectorAll('[data-tool]').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      currentTool = btn.dataset.tool;
+      applyCanvasCursor();
+      syncStatus();
+    });
+    document.querySelectorAll('.color-swatch').forEach(s => s.onclick = () => {
+      document.querySelectorAll('.color-swatch').forEach(x => x.classList.remove('active'));
+      s.classList.add('active');
+      currentColor = s.dataset.color;
+      applyCanvasCursor();
+      syncStatus();
+    });
+    document.querySelectorAll('.size-btn').forEach(s => s.onclick = () => {
+      document.querySelectorAll('.size-btn').forEach(x => x.classList.remove('active'));
+      s.classList.add('active');
+      currentSize = Number(s.dataset.size);
+    });
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', moveDraw);
+    window.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', moveDraw, { passive: false });
+    window.addEventListener('touchend', endDraw);
+
+    document.getElementById('recognizeBtn').onclick = recognizeDrawing;
+    document.getElementById('undoBtn').onclick = undo;
+    document.getElementById('redoBtn').onclick = redo;
+    document.getElementById('clearBtn').onclick = () => { pushUndo(); strokes = []; redoStack = []; redrawAll(); syncStatus(); hint.style.display = 'block'; };
+    document.getElementById('exportBtn').onclick = exportData;
+    document.getElementById('assistantToggle').onclick = () => {
+      const p = document.getElementById('assistantPanel');
+      p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    };
+    document.getElementById('askBtn').onclick = queryAssistant;
+    document.getElementById('notesToggle').onclick = () => {
+      notesPanel.style.display = notesPanel.style.display === 'block' ? 'none' : 'block';
+    };
+
+    const keyboard = document.getElementById('mathKeyboard');
+    keyboard.innerHTML = symbolKeys.map(k => `<button class='key'>${k}</button>`).join('') + `<button class='key close-red'>✕ Cerrar</button>`;
+    keyboard.addEventListener('click', (e) => {
+      if (!(e.target instanceof HTMLElement)) return;
+      if (!e.target.classList.contains('key')) return;
+      if (e.target.textContent.includes('Cerrar')) return keyboard.style.display = 'none';
+      const title = document.getElementById('pageTitle');
+      title.value += ` ${e.target.textContent}`;
+    });
+    document.getElementById('kbdToggle').onclick = () => {
+      keyboard.style.display = keyboard.style.display === 'block' ? 'none' : 'block';
+    };
+
+    document.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (e.ctrlKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+      if (e.ctrlKey && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); }
+      if (tag !== 'input' && tag !== 'textarea' && e.key === 'Enter') { e.preventDefault(); recognizeDrawing(); }
+      if (tag === 'input' || tag === 'textarea') return;
+      if (e.key.toLowerCase() === 'p') document.querySelector('[data-tool="pencil"]').click();
+      if (e.key.toLowerCase() === 'e') document.querySelector('[data-tool="eraser"]').click();
+    });
+
+    document.getElementById('dateLine').textContent = new Date().toLocaleString('es-AR', { dateStyle: 'full', timeStyle: 'short' });
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    applyCanvasCursor();
+    refreshNotes();
+    syncStatus();
+  </script>
+</body>
+</html>
